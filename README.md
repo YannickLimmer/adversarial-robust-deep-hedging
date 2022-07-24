@@ -1,8 +1,8 @@
 # Adversarial Robust Deep Hedging
 
-This repository solves problems of the type
+This repository solves problems of the type:
 
-Choose a hedging strategy $\phi$ such that it maximizes
+Maximize
 
 $$
 \inf_{P}R\Big(\sum_{n = 0}^{N-1} \phi_{t_n} \Delta S_{t_{n+1}}^P - C_{t_N}\Big) + \alpha(P)
