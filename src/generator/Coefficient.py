@@ -27,3 +27,8 @@ class Coefficient(torch.nn.Module, Generic[_CoefficientConfig], metaclass=ABCMet
 
     def eliminate_time_if_time_invariant(self, x: torch.Tensor) -> torch.Tensor:
         return x[:, 1:] if self.config.time_invariant else x
+
+
+_Drift_Coefficient = TypeVar('_Drift_Coefficient', bound=Coefficient)
+_Diffusion_Coefficient = TypeVar('_Diffusion_Coefficient', bound=Coefficient)
+

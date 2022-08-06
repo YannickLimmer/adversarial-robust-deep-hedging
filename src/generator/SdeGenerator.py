@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from typing import Union, Callable
+from typing import Callable, Generic
 
 import torch
 
-from src.generator.Coefficient import Coefficient
+from src.generator.Coefficient import Coefficient, _Drift_Coefficient, _Diffusion_Coefficient
 from src.util.TimeUtil import TimeDiscretization
 
 
@@ -19,14 +19,14 @@ class GeneratorConfig:
             coefficient.config.dimension_of_process = self.initial_asset_price().shape[0]
 
 
-class SdeGenerator(torch.nn.Module):
+class SdeGenerator(torch.nn.Module, Generic[_Drift_Coefficient, _Diffusion_Coefficient]):
 
     def __init__(self, generator_config: GeneratorConfig):
         super().__init__()
         self.config = generator_config
 
-        self.drift = self.config.drift_coefficient
-        self.diffusion = self.config.diffusion_coefficient
+        self.drift: _Drift_Coefficient = self.config.drift_coefficient
+        self.diffusion: _Diffusion_Coefficient = self.config.diffusion_coefficient
 
     def forward(self, noise: torch.Tensor) -> torch.Tensor:
         process = [torch.ones_like(noise[:, 0, :]) * self.config.initial_asset_price()]

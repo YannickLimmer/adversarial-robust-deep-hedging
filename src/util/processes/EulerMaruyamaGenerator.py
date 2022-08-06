@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from typing import Optional
 
 import numpy as np
-from numpy._typing import NDArray
+from numpy.typing import NDArray
 
 from src.util.processes.DiffusionGenerator import DiffusionGenerator
 
@@ -19,7 +19,7 @@ class EulerMaruyamaGenerator(DiffusionGenerator, metaclass=ABCMeta):
         process = [initial_value]
         for index in range(time_increments.shape[0]):
             drift_increment = self.drift(process[-1], times[index]) * time_increments[index]
-            noise = stochastic_increments[:, index, :, None] * np.sqrt(time_increments)
+            noise = stochastic_increments[:, index, :, None] * np.sqrt(time_increments[index])
             stoch_increment = self.diffusion(process[-1], times[index]) @ noise
             process.append(process[-1] + drift_increment + stoch_increment[:, :, 0])
 

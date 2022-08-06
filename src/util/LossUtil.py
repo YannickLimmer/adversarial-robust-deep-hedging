@@ -32,6 +32,15 @@ def entropy(arr: torch.Tensor, scale: float = 1, dim: int = 0) -> torch.Tensor:
     return - torch.log(torch.mean(torch.exp(- scale * arr), dim=dim)) / scale
 
 
+def stable_entropy(
+        arr: torch.Tensor,
+        scale: np.float = 0.2,
+        dim: int = 0,
+) -> torch.Tensor:
+    min_val = torch.min(arr, dim, keepdim=True)[0]
+    return entropy(arr + min_val, scale, dim) - min_val
+
+
 def negative_standard_error(arr: torch.Tensor, dim: int = 0):
     return - torch.mean(arr ** 2, dim=dim)
 
@@ -62,3 +71,5 @@ def conditional_value_at_risk(
 def create_slice(shape: Tuple[int], axis: int, considered_fraction: np.float) -> Tuple:
     reduced_slice = np.s_[:int(considered_fraction * shape[axis]) + 1]
     return tuple((reduced_slice if ax == axis else np.s_[:]) for ax, _ in enumerate(shape))
+
+

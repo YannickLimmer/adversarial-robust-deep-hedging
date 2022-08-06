@@ -3,7 +3,8 @@ from dataclasses import dataclass
 
 import torch
 
-from src.util.LossUtil import entropy, mean_variance, conditional_value_at_risk, negative_standard_deviation
+from src.util.LossUtil import entropy, mean_variance, conditional_value_at_risk, negative_standard_deviation, \
+    stable_entropy
 
 
 @dataclass
@@ -30,6 +31,15 @@ class Entropy(HedgeObjective):
 
 
 @dataclass
+class StableEntropy(HedgeObjective):
+
+    considered_fraction: float
+
+    def _call(self, profit_and_loss: torch.Tensor) -> torch.Tensor:
+        return stable_entropy(profit_and_loss, self.considered_fraction, dim=0)
+
+
+@dataclass
 class MeanVariance(HedgeObjective):
 
     risk_aversion: float
@@ -45,6 +55,7 @@ class CVAR(HedgeObjective):
 
     def _call(self, profit_and_loss: torch.Tensor) -> torch.Tensor:
         return conditional_value_at_risk(profit_and_loss, self.considered_fraction, dim=0)
+
 
 @dataclass
 class Std(HedgeObjective):

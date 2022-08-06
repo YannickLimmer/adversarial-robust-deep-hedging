@@ -2,9 +2,8 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-from numpy._typing import NDArray
+from numpy.typing import NDArray
 
-from src.util.processes.DiffusionGenerator import DiffusionGenerator
 from src.util.processes.EulerMaruyamaGenerator import EulerMaruyamaGenerator
 
 
@@ -37,6 +36,18 @@ class HestonGenerator(EulerMaruyamaGenerator):
 
     @property
     def correlation_matrix_root(self) -> NDArray:
-        target_matrix = np.array([[1.0, self.pars.correlation], [self.pars.correlation, 1.0]])
-        return np.linalg.cholesky(target_matrix)
+        return np.array([[1.0, 0], [self.pars.correlation, np.sqrt(1 - self.pars.correlation ** 2)]])
 
+    def _generate(
+            self,
+            initial_value: NDArray,
+            times: NDArray,
+            stochastic_increments: Optional[NDArray] = None,
+    ) -> NDArray:
+        process = super()._generate(initial_value, times, stochastic_increments)
+        ttm = (times[-1] - times)[None, :]
+        correction = (initial_value[:, 1:2] - self.pars.reversion_level) / self.pars.reversion_speed \
+            * (1 - np.exp(- self.pars.reversion_speed * ttm)) + self.pars.reversion_level * ttm
+        extended_time_increments = np.concatenate((np.array([0]), np.diff(times, 1)))[None, :]
+        process[:, :, 1] = np.cumsum(process[:, :, 1] * extended_time_increments, axis=1) + correction
+        return process

@@ -7,6 +7,9 @@ from src.generator.Coefficient import CoefficientConfig, Coefficient
 from src.util.processes.HestonGenerator import HestonParameterSet
 
 
+EPS = 0.000001
+
+
 @dataclass
 class HestonCoefficientConfig(CoefficientConfig):
     initializer: HestonParameterSet
@@ -41,14 +44,22 @@ class HestonDiffusionCoefficient(Coefficient[HestonCoefficientConfig]):
     def __init__(self, config: HestonCoefficientConfig):
         super().__init__(config)
 
-        self.vol_of_vol = nn.Parameter(torch.tensor(self.config.initializer.vol_of_vol, dtype=torch.float32))
-        self.correlation = nn.Parameter(torch.tensor(self.config.initializer.correlation, dtype=torch.float32))
+        self._vol_of_vol = nn.Parameter(torch.tensor(self.config.initializer.vol_of_vol, dtype=torch.float32))
+        self._correlation = nn.Parameter(torch.tensor(self.config.initializer.correlation, dtype=torch.float32))
+
+    @property
+    def vol_of_vol(self):
+        return torch.clamp(self._vol_of_vol, torch.tensor([0]))
+
+    @property
+    def correlation(self):
+        return torch.clamp(self._correlation, torch.tensor([-1 + EPS]), torch.tensor([1 - EPS]))
 
     @property
     def correlation_matrix_root(self) -> torch.Tensor:
         target_matrix = torch.eye(2)
         target_matrix[1, 1] = torch.sqrt(1 - self.correlation ** 2)
-        target_matrix[0, 1] = self.correlation
+        target_matrix[1, 0] = self.correlation
         return target_matrix
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
