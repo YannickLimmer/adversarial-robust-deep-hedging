@@ -9,7 +9,7 @@ class HestonGenerator(SdeGenerator[HestonDriftCoefficient, HestonDiffusionCoeffi
     def forward(self, noise: torch.Tensor) -> torch.Tensor:
         process = super().forward(noise)
         ttm = torch.as_tensor(self.config.td.time_to_maturity, dtype=torch.float32)
-        correction = (self.config.initial_asset_price()[1] - self.drift.reversion_level) / self.drift.reversion_speed \
+        correction = (process[:, :, 1] - self.drift.reversion_level) / self.drift.reversion_speed \
             * (1 - torch.exp(- self.drift.reversion_speed * ttm)) + self.drift.reversion_level * ttm
         extended_time_increments = torch.cat((
             torch.tensor([0]),

@@ -46,7 +46,7 @@ class HestonGenerator(EulerMaruyamaGenerator):
     ) -> NDArray:
         process = super()._generate(initial_value, times, stochastic_increments)
         ttm = (times[-1] - times)[None, :]
-        correction = (initial_value[:, 1:2] - self.pars.reversion_level) / self.pars.reversion_speed \
+        correction = (process[:, :, 1] - self.pars.reversion_level) / self.pars.reversion_speed \
             * (1 - np.exp(- self.pars.reversion_speed * ttm)) + self.pars.reversion_level * ttm
         extended_time_increments = np.concatenate((np.array([0]), np.diff(times, 1)))[None, :]
         process[:, :, 1] = np.cumsum(process[:, :, 1] * extended_time_increments, axis=1) + correction
