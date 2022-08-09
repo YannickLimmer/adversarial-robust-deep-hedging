@@ -14,7 +14,7 @@ class VolatilityComparisonConfig(MetricConfig):
     td: TimeDiscretization
 
     def __post_init__(self):
-        self.time_root = torch.as_tensor(np.sqrt(self.td.times), dtype=torch.float32, device=DEVICE)[1:]
+        self.time_root = torch.as_tensor(np.sqrt(self.td.times), dtype=torch.float32, device=DEVICE)[1:, None]
 
 
 class CompareVolatility(Metric[VolatilityComparisonConfig]):

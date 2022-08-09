@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import TypeVar, Generic
 
 import numpy as np
 import torch
@@ -21,9 +22,12 @@ class DeepHedgeConfig:
             )
 
 
-class DeepHedge(nn.Module):
+_DeepHedgeConfig = TypeVar('_DeepHedgeConfig', bound=DeepHedgeConfig)
 
-    def __init__(self, config: DeepHedgeConfig):
+
+class DeepHedge(nn.Module, Generic[_DeepHedgeConfig]):
+
+    def __init__(self, config: _DeepHedgeConfig):
         super().__init__()
         self.config = config
         self.td = config.derivative.td
@@ -36,7 +40,7 @@ class DeepHedge(nn.Module):
 
         strategy = []
         for time_step_index in self.td.indices:
-            strategy.append(self.strategy_layer(information))
+            strategy.append(self.strategy_layer(self.filter_information(information)))
             information = self.update_information(information, inputs, time_step_index)
             wealth = self.update_wealth(wealth, inputs, strategy[-1], time_step_index)
 
@@ -68,6 +72,10 @@ class DeepHedge(nn.Module):
             ),
             dim=1,
         )
+
+    # noinspection PyMethodMayBeStatic
+    def filter_information(self, information: torch.Tensor) -> torch.Tensor:
+        return information
 
     @staticmethod
     def update_wealth(

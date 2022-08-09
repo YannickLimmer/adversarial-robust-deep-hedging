@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Callable, Generic
 
 import torch
+from torch import nn
 
 from src.generator.Coefficient import Coefficient, _Drift_Coefficient, _Diffusion_Coefficient
 from src.util.TimeUtil import TimeDiscretization
@@ -15,8 +16,9 @@ class GeneratorConfig:
     diffusion_coefficient: Coefficient
 
     def __post_init__(self):
-        for coefficient in (self.drift_coefficient, self.diffusion_coefficient):
-            coefficient.config.dimension_of_process = self.initial_asset_price().shape[0]
+        if self.initial_asset_price is not None:
+            for coefficient in (self.drift_coefficient, self.diffusion_coefficient):
+                coefficient.config.dimension_of_process = self.initial_asset_price().shape[0]
 
 
 class SdeGenerator(torch.nn.Module, Generic[_Drift_Coefficient, _Diffusion_Coefficient]):
@@ -28,8 +30,20 @@ class SdeGenerator(torch.nn.Module, Generic[_Drift_Coefficient, _Diffusion_Coeff
         self.drift: _Drift_Coefficient = self.config.drift_coefficient
         self.diffusion: _Diffusion_Coefficient = self.config.diffusion_coefficient
 
+        self.trainable_initial_asset_price = nn.Parameter(
+            torch.ones(self.config.drift_coefficient.config.dimension_of_process),
+        )
+
+    @property
+    def initial_asset_price(self) -> Callable[[], torch.Tensor]:
+
+        def trainable_initial() -> torch.Tensor:
+            return self.trainable_initial_asset_price
+
+        return self.config.initial_asset_price if self.config.initial_asset_price is not None else trainable_initial
+
     def forward(self, noise: torch.Tensor) -> torch.Tensor:
-        process = [torch.ones_like(noise[:, 0, :]) * self.config.initial_asset_price()]
+        process = [torch.ones_like(noise[:, 0, :]) * self.initial_asset_price()]
         for index in self.config.td.indices:
             process_coupled_with_time = self.couple_with_time(process[-1], self.config.td.times[index])
             drift_increment = self.drift(process_coupled_with_time) * self.config.td.time_step_increments[index]
