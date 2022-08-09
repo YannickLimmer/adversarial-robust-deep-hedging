@@ -28,6 +28,10 @@ class TimeDiscretization:
     def indices(self) -> List[int]:
         return list(range(self.number_of_time_steps))
 
+    @property
+    def time_to_maturity(self) -> np.array:
+        return self.maturity - self.times
+
 
 class UniformTimeDiscretization(TimeDiscretization):
 

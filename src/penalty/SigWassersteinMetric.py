@@ -1,19 +1,21 @@
+import functools
+import math
 from dataclasses import dataclass
-from functools import cached_property
-from typing import Tuple, List
+from typing import List
 
-import numpy as np
 import signatory
 import torch
 
 from src.config import DEVICE
 from src.penalty.Augmentations import BaseAugmentation
+from src.penalty.Metric import Metric, MetricConfig
 
 
 @dataclass
-class SignatureConfig:
+class SignatureConfig(MetricConfig):
     depth: int
     basepoint: bool = False
+    normalize: bool = True
     augmentations: List[BaseAugmentation] = ()
 
 
@@ -32,31 +34,37 @@ class SignatureEngine:
         return data
 
 
-class SigWassersteinMetric(torch.nn.Module):
+class SigWassersteinMetric(Metric[SignatureConfig]):
 
-    def __init__(self, original: torch.Tensor, signature_config: SignatureConfig, scale: float=1.0):
-        super().__init__()
-        self.original = original
-        self.signature_engine = SignatureEngine(signature_config)
-        self.scale = scale
+    @property
+    @functools.lru_cache()
+    def signature_engine(self) -> SignatureEngine:
+        return SignatureEngine(self.config)
 
-    @cached_property
+    @property
+    @functools.lru_cache()
     def original_signatures(self) -> torch.Tensor:
         return self.signature_engine.compute_signatures(self.original)
 
     def forward(self, generated: torch.Tensor) -> torch.Tensor:
         selected_original_signatures = self.sample_from_original_signatures(generated.shape[0])
         generated_signatures = self.signature_engine.compute_signatures(generated)
-        return self.compute_loss(selected_original_signatures, generated_signatures) * self.scale
+        return self.transform(self.compute_loss(selected_original_signatures, generated_signatures))
 
     def sample_from_original_signatures(self, batch_size: int) -> torch.Tensor:
         return self.original_signatures[self.sample_indices(batch_size)].clone().to(DEVICE)
 
-    def sample_indices(self, batch_size: int):
-        return torch.from_numpy(
-            np.random.choice(self.original.shape[0], size=batch_size, replace=False),
-        ).to(DEVICE)
+    def compute_loss(self, signatures_original: torch.Tensor, signatures_generated: torch.Tensor) -> torch.Tensor:
+        return torch.mean(
+            (self.compute_esig(signatures_original, dim=0) - self.compute_esig(signatures_generated, dim=0)) ** 2,
+        )
 
-    @staticmethod
-    def compute_loss(signatures_original: torch.Tensor, signatures_generated: torch.Tensor) -> torch.Tensor:
-        return torch.norm(torch.mean(signatures_original, dim=0) - torch.mean(signatures_generated, dim=0), p=2, dim=0)
+    def compute_esig(self, signatures: torch.Tensor, dim: int) -> torch.Tensor:
+        esig = torch.mean(signatures, dim=dim)
+        if self.signature_engine.config.normalize:
+            count = 0
+            for i in range(self.signature_engine.config.depth):
+                esig[count:count + dim ** (i + 1)] = esig[count:count + dim ** (i + 1)] * math.factorial(i + 1)
+                count = count + dim ** (i + 1)
+        return esig
+

@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Callable
+from dataclasses import dataclass, field
+from typing import Callable, Optional
 
 import torch
 from torch import nn
@@ -11,10 +11,13 @@ from src.generator.Coefficient import CoefficientConfig, Coefficient
 class CoefficientNetConfig(CoefficientConfig):
     number_of_layers: int
     nodes_in_intermediate_layers: int
-    time_invariant: bool = False
+    dim_of_process: int
     intermediate_activation: nn.Module = nn.ReLU()
     output_activation: nn.Module = nn.ReLU()
     transformation: Callable[[torch.Tensor], torch.Tensor] = nn.Identity()
+
+    def __post_init__(self):
+        self.dimension_of_process = self.dim_of_process
 
 
 class CoefficientNet(Coefficient[CoefficientNetConfig]):

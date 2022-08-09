@@ -12,4 +12,4 @@ class EuropeanCallOption(Derivative):
         self.strike = strike
 
     def payoff_for_terminal_asset_values(self, terminal_values: torch.Tensor) -> torch.Tensor:
-        return torch.sum(torch.maximum(terminal_values - self.strike, torch.zeros_like(terminal_values)), dim=1)
+        return torch.maximum(terminal_values[:, 0] - self.strike, torch.zeros_like(terminal_values)[:, 0])

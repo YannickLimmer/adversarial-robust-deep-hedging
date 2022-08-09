@@ -29,13 +29,13 @@ class BlackScholesGenerator(DiffusionGenerator):
     ) -> NDArray:
         time_increments = np.diff(times, 1)[np.newaxis, :, np.newaxis]
         drift, sigma = self.drift[np.newaxis, np.newaxis, :], self.sigma[np.newaxis, np.newaxis, :]
-        return np.cumsum(
+        return initial_value[:, np.newaxis, :] * np.exp(np.cumsum(
             np.concatenate([
-                initial_value[:, np.newaxis, :],
-                time_increments * drift + sigma * np.sqrt(time_increments) * stochastic_increments,
+                np.zeros_like(initial_value)[:, np.newaxis, :],
+                time_increments * (drift - 0.5 * sigma**2) + sigma * np.sqrt(time_increments) * stochastic_increments,
             ], axis=1),
             axis=1,
-        )
+        ))
 
     @staticmethod
     def verify_dimension_of_drift_and_sigma(drift: NDArray, sigma: NDArray) -> None:
