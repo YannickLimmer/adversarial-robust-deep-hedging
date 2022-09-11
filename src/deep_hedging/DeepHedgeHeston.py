@@ -6,6 +6,8 @@ from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
 
 class DeepHedgeHestonConfig(DeepHedgeConfig):
 
+    # TODO. This should be obsolete.
+
     def __post_init__(self):
         if self.initial_information_value.shape[0] != 3:
             raise AttributeError(
@@ -17,6 +19,15 @@ class DeepHedgeHestonConfig(DeepHedgeConfig):
 
 
 class DeepHedgeHeston(DeepHedge[DeepHedgeHestonConfig]):
+
+    """
+    Implements the deep hedge for the Heston model. In particular the input structure expects three-dimensional process
+    increments, with the first being the asset price process, the second the volatility process and the third the vola-
+    tility swap. The first and last are tradable, the first and second are available as information.
+
+    :param config: A generic configuration class. Provides all required information for deep hedging.
+    :type config: Generic[_DeepHedgeConfig]
+    """
 
     def _filter_information(self, information: torch.Tensor) -> torch.Tensor:
         return information[:, (0, 1, 2)]
