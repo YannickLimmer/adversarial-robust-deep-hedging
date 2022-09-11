@@ -4,7 +4,8 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from src.deep_hedging.DeepHedge import DeepHedgeConfig, DeepHedge
+from src.deep_hedging.DeepHedge import DeepHedge
+from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
 from src.deep_hedging.DeepHedgeTrainer import DeepHedgeTrainer, DeepHedgeTrainerConfig
 from src.deep_hedging.StrategyNet import StrategyNetConfig
 from src.deep_hedging.objectives.HedgeObjective import MeanVariance

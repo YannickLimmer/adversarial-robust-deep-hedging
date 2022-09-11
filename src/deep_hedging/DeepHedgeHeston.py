@@ -1,6 +1,7 @@
 import torch
 
-from src.deep_hedging.DeepHedge import DeepHedge, DeepHedgeConfig
+from src.deep_hedging.DeepHedge import DeepHedge
+from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
 
 
 class DeepHedgeHestonConfig(DeepHedgeConfig):
@@ -17,11 +18,11 @@ class DeepHedgeHestonConfig(DeepHedgeConfig):
 
 class DeepHedgeHeston(DeepHedge[DeepHedgeHestonConfig]):
 
-    def filter_information(self, information: torch.Tensor) -> torch.Tensor:
+    def _filter_information(self, information: torch.Tensor) -> torch.Tensor:
         return information[:, (0, 1, 2)]
 
     @staticmethod
-    def update_wealth(
+    def _update_wealth(
             wealth: torch.Tensor,
             inputs: torch.Tensor,
             strategy_for_time_step: torch.Tensor,

@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
-from src.deep_hedging.DeepHedge import DeepHedgeConfig, DeepHedge
+from src.deep_hedging.DeepHedge import DeepHedge
+from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
 from src.deep_hedging.StrategyNet import StrategyNetConfig
 from src.derivative.EuropeanCallOption import EuropeanCallOption
 from src.util.TimeUtil import UniformTimeDiscretization
