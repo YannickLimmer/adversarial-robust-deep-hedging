@@ -2,13 +2,15 @@ from dataclasses import dataclass
 
 import torch
 
+from src.generator.SdeGenerator import SdeGenerator
+from src.penalty.Metric import Metric
 from src.util.torch_util.AdapterUtil import AdapterList
 
 
 @dataclass
 class SdeGeneratorTrainerConfig:
-    generator: torch.nn.Module
-    penalizer: torch.nn.Module
+    generator: SdeGenerator
+    penalizer: Metric
     optimizer: torch.optim.Optimizer
     penalization_adapters: AdapterList = AdapterList()
 

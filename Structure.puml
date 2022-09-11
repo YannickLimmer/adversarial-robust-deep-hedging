@@ -1,0 +1,315 @@
+@startuml
+
+package "training" {
+abstract Trainer {
+    Trains a ML-model.
+    ..
+    - trainer_config: TrainerConfig
+    + step(inputs: Tensor) -> Metrics
+    + fit(number_of_steps: int, callbacks: List[Callable]) -> None
+}
+
+class TrainerConfig {
+    Configuration of the Trainer.
+    ..
+    - batch_size: int
+    - samples_per_step: int
+    - generator: Callable
+    - regeneration_frequency: int
+}
+Trainer . TrainerConfig
+
+abstract Metrics {
+    Baseclass for the information
+    created within one training step.
+    ..
+
+}
+Trainer . Metrics
+
+class RobustDhGan {
+    Implementation of the robust hedge GAN training procedure.
+    ..
+    - hedge_config: DeepHedgeTrainerConfig
+    - gen_config: SdeGeneratorTrainerConfig
+    + activate_generation_training() -> None
+    + deactivate_generation_training() -> None
+    + activate_hedge_training() -> None
+    + deactivate_hedge_training() -> None
+}
+
+Trainer --> RobustDhGan
+
+class RobustDhGanMetrics {
+    RobustDhGan specific quantities.
+    ..
+    - hedge_loss: Tensor
+    - penalty: Tensor
+    - generation_loss: Tensor
+}
+
+Metrics --> RobustDhGanMetrics
+RobustDhGan . RobustDhGanMetrics
+
+}
+
+package "deep_hedging" {
+class DeepHedgeTrainerConfig {
+    Configuration for a deep hedge training.
+    ..
+    deep_hedge: DeepHedge
+    hedge_objective: HedgeObjective
+    optimizer: torch.optim.Optimizer
+    generation_adapters: AdapterList
+}
+
+RobustDhGan ... DeepHedgeTrainerConfig
+
+abstract DeepHedge {
+    Implementation of the deep hedge.
+    ..
+    - config: DeepHedgeConfig
+    - strategy_layer: StrategyNet
+}
+DeepHedgeTrainerConfig .. DeepHedge
+
+class DeepHedgeConfig {
+    Configuration of the deep hedge.
+    ..
+    - derivative: Derivative
+    - initial_asset_price: Tensor
+    - strategy_net_config: StrategyNetConfig
+}
+DeepHedge . DeepHedgeConfig
+
+class StrategyNet {
+    Feedforward neural network that takes time
+    and information outputs the action.
+    ..
+    - config: StrategyNetConfig
+    - input_layer: torch.nn.Module
+    - intermediate_layers: torch.nn.ModuleDict
+    - output_layer: torch.nn.Module
+}
+DeepHedge .. StrategyNet
+
+class StrategyNetConfig {
+    Configuration of the StrategyNet.
+    ..
+    - dimension_of_asset: int
+    - number_of_layers: int
+    - nodes_in_intermediate_layers: int
+    - intermediate_activation: torch.nn.Module
+    - output_activation: torch.nn.Module
+}
+StrategyNet . StrategyNetConfig
+DeepHedgeConfig .. StrategyNetConfig
+
+abstract HedgeObjective {
+    Specifies the objective of the agent.
+    ..
+    + __call__(profit_and_loss: Tensor) -> Tensor
+}
+DeepHedgeTrainerConfig . HedgeObjective
+
+}
+
+
+class AdapterList {
+    Allows to modify data before using as input.
+    ..
+    - adapters: List[Adapter]
+}
+DeepHedgeTrainerConfig .... AdapterList
+
+abstract Adapter {
+    Allows to modify data before using as input.
+    ..
+    + __call__(inputs: Tensor) -> Tensor
+}
+AdapterList <-- Adapter
+AdapterList .. Adapter
+
+
+abstract torch.nn.Module {
+    Base class for torch modules.
+    ..
+    + forward(inputs: Tensor) -> Tensor
+}
+DeepHedge <---- torch.nn.Module
+StrategyNet <---- torch.nn.Module
+
+package "derivative"{
+
+abstract Derivative {
+    Base class for derivatives to hedge.
+    ..
+    - time_discretization: TimeDiscretization
+    - price: float
+    + payoff_for_terminal_asset_values(terminal_values: Tensor) -> Tensor
+}
+DeepHedgeConfig .... Derivative
+
+}
+
+package "generation" {
+class SdeGeneratorTrainerConfig {
+    Configuration for a generator training.
+    ..
+    - generator: SdeGenerator
+    - penalizer: Metric
+    - optimizer: torch.optim.Optimizer
+    - penalization_adapters: AdapterList
+}
+SdeGeneratorTrainerConfig .... AdapterList
+
+RobustDhGan ... SdeGeneratorTrainerConfig
+
+abstract SdeGenerator{
+    Base class for SDE generators. The forward
+    call transforms Brownian increments to paths
+    of the desired SDE.
+    ..
+    - config: GeneratorConfig
+    - drift: DriftCoefficient
+    - diffusion: DiffusionCoefficient
+    - initial_asset_price: Callable
+}
+SdeGeneratorTrainerConfig .. SdeGenerator
+SdeGenerator <---- torch.nn.Module
+
+class GeneratorConfig{
+    Configuration of a generator.
+    ..
+    - td: TimeDiscretization
+    - initial_asset_price: Callable
+    - drift_coefficient: Coefficient
+    - diffusion_coefficient: Coefficient
+}
+SdeGenerator . GeneratorConfig
+
+abstract Coefficient {
+    Base class for SDE coefficient.
+    ..
+    - config: CoefficientConfig
+}
+GeneratorConfig .. Coefficient
+Coefficient <---- torch.nn.Module
+
+abstract CoefficientConfig {
+    Configuration of a Coefficient.
+    ..
+    - dimension_of_process: int
+    - time_invariant: bool
+}
+Coefficient . CoefficientConfig
+
+class CoefficientNet {
+    Implementation of an NSDE coefficient.
+    ..
+    - input_layer: torch.nn.Module
+    - intermediate_layers: torch.nn.ModuleDict
+    - output_layer: torch.nn.ModuleDict
+}
+Coefficient --> CoefficientNet
+
+class DiffusionCoefficientNet {
+    Implementation of an NSDE diffusion coefficient, which
+    has input dimension squared due to possible correlations.
+    ..
+    - coefficients_by_noise_dimension: Dict[CoefficientNet]
+}
+Coefficient --> DiffusionCoefficientNet
+CoefficientNet . DiffusionCoefficientNet
+
+abstract CoefficientNetConfig {
+    Configuration of a Coefficient.
+    ..
+    - dimension_of_process: int
+    - time_invariant: bool
+}
+CoefficientConfig --> CoefficientNetConfig
+CoefficientNet .. CoefficientNetConfig
+DiffusionCoefficientNet .. CoefficientNetConfig
+
+}
+
+
+
+package "penalty"{
+
+abstract Metric{
+    Base class for penalty metric. Compares the
+    original data by some metric to the input.
+    ..
+    - original: Tensor
+    - metric_config: MetricConfig
+    - transform: Callable
+}
+SdeGeneratorTrainerConfig .. Metric
+Metric <---- torch.nn.Module
+
+abstract MetricConfig {
+    Template for metric configuration.
+    ..
+}
+Metric . MetricConfig
+
+class SignatureMMD{
+    Implementation of the signature MMD.
+    ..
+    - signature_engine: SignatureEngine
+}
+Metric --> SignatureMMD
+
+class SignatureMMDConfig{
+    Configuration of a SignatureMMD.
+    ..
+    - signature_config: SignatureConfig
+    - sig_kernel: SigKernel
+}
+SignatureMMD . SignatureMMDConfig
+MetricConfig --> SignatureMMDConfig
+
+class SigWassersteinMetric{
+    Implementation of the signature MMD.
+    ..
+    - signature_engine: SignatureEngine
+}
+SigWassersteinMetric <-- Metric
+
+class SignatureEngine{
+    Configuration of a SignatureMMD.
+    ..
+    - config: SignatureConfig
+    + compute_signatures(data: Tensor) -> Tensor
+    + augment_data(data: Tensor) -> Tensor
+}
+SigWassersteinMetric . SignatureEngine
+SignatureMMD .. SignatureEngine
+
+class SignatureConfig{
+    Configuration of a SignatureMMD.
+    ..
+    - depth: int
+    - base_point: bool
+    - normalize: bool
+    - augmentations: List[BaseAugmentations]
+}
+SignatureEngine .. SignatureConfig
+SigWassersteinMetric .. SignatureConfig
+SignatureConfig <-- MetricConfig
+SignatureMMDConfig .. SignatureConfig
+
+}
+
+class sigkernel.SigKernel {
+    Class for signature kernel computations.
+    ..
+    - static_kernel: Union[LinearKernel, RBFKernel]
+    - dyadic_order: int
+    + compute_mmd(data_a: Tensor, data_b: Tensor) -> Tensor
+}
+SignatureMMDConfig .. sigkernel.SigKernel
+
+@enduml
