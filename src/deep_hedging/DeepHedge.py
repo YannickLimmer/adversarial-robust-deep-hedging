@@ -5,6 +5,14 @@ from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig, AbstractDeepHedg
 
 class DeepHedge(AbstractDeepHedge[DeepHedgeConfig]):
 
+    """
+    A straightforward implementation of the abstract deep hedge. The data is provided as the increments of the asset
+    price process, of which all components are available as information and tradable.
+
+    :param config: A generic configuration class. Provides all required information for deep hedging.
+    :type config: Generic[_DeepHedgeConfig]
+    """
+
     def _extract_initial_information(self, inputs: torch.Tensor) -> torch.Tensor:
         """
         Constructs a tensor in the shape of the information process containing the initial time and the initial asset
