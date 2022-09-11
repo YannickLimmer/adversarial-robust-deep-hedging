@@ -19,18 +19,18 @@ class DeepHedgeConfig:
 
     :param derivative: A derivative which will be replicated in the to be configured deep hege.
     :type derivative: Derivative
-    :param initial_asset_price: The initial asset price of the asset price process.
-    :type initial_asset_price: torch.Tensor
+    :param initial_information_value: The initial value of the information process.
+    :type initial_information_value: torch.Tensor
     :param strategy_config: Configuration of the strategy net.
     :type strategy_config: StrategyNetConfig
     """
 
     derivative: Derivative
-    initial_asset_price: torch.Tensor
+    initial_information_value: torch.Tensor
     strategy_config: StrategyNetConfig
 
     def __post_init__(self):
-        if self.initial_asset_price.shape[0] != self.strategy_config.dimension_of_asset:
+        if self.initial_information_value.shape[0] != self.strategy_config.dim_of_information_process:
             raise AttributeError(
                 'Initial asset price dimension does not coincide with asset price dimension of strategy specs.',
             )
@@ -71,9 +71,7 @@ class AbstractDeepHedge(nn.Module, Generic[_DeepHedgeConfig], metaclass=ABCMeta)
         the payoffs are weighed against the derivative payoffs, and a profit and loss value is computed.
 
         :param inputs: A tensor that contains enough data to provide the information for the strategy layer at each time
-        step and to construct the wealth process of a chosen strategy. In the base implementation, this tensor is of
-        shape (n, m, d',), where n is the batch size, m the number of time steps, and d' some integer greater or equal
-        to the dimension of the asset. The latter allows to parse information that is not tradable to the strategy.
+        step and for construction of the wealth process of a chosen strategy.
 
         For the respective structure of the input tensor, the methods
             - `_extract_initial_information`
@@ -87,7 +85,7 @@ class AbstractDeepHedge(nn.Module, Generic[_DeepHedgeConfig], metaclass=ABCMeta)
         :return: If `training` is `True` the profit and loss of the prevailing strategy, which is a Tensor of shape (n,)
         where n is the batch size. Otherwise, the strategy for the scenarios of the batch are returned, which is a
         tensor of shape (n, m, d,), where n is the batch size, m the number of time steps, and d the dimension of the
-        asset.
+        tradable asset.
         :rtype: torch.Tensor
         """
         information = self._extract_initial_information(inputs)
@@ -112,11 +110,14 @@ class AbstractDeepHedge(nn.Module, Generic[_DeepHedgeConfig], metaclass=ABCMeta)
         Given the inputs, the initial information is extracted, which is (at least partially, see filtering) passed to
         the `strategy_layer` in the first iteration. Encodes the time of the first time step.
 
+        Note that the information process must contain enough data to compute the derivative payoff. If this information
+        should not be attainable by the strategy, it can be filtered.
+
         :param inputs: The input tensor passed to the deep hedge.
         :type inputs: torch.Tensor
         :return: The initial information that contains the time of the first time step. A tensor of shape (n, d',),
         where n is the batch size and d' the dimension of the information process, which is usually greater than the
-        dimension of the asset. It is advised that one entry of the second axis is used to parse the initial time.
+        dimension of the asset. It is advised that the first entry of the second axis is used to parse the initial time.
         :rtype: torch.Tensor
         """
         pass
@@ -144,6 +145,9 @@ class AbstractDeepHedge(nn.Module, Generic[_DeepHedgeConfig], metaclass=ABCMeta)
     ) -> torch.Tensor:
         """
         Yields a tensor containing the information for the next time step.
+
+        Note that the information process must contain enough data to compute the derivative payoff. If this information
+        should not be attainable by the strategy, it can be filtered.
 
         :param information: The (unfiltered) information of the previous time step, a tensor of shape (n, d',), where n
         is the batch size and d' the dimension of the information process.

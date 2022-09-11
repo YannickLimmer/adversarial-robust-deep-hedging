@@ -22,7 +22,12 @@ def test_dh_trainer():
     td = UniformTimeDiscretization(trading_freq * 1./255., 90 // trading_freq)
     derivative = EuropeanCallOption(strike=1.0, time_discretization=td, price=0.0)
     initial_asset_price = np.array([1.0])
-    strategy_config = StrategyNetConfig(dimension_of_asset=1, number_of_layers=3, nodes_in_intermediate_layers=36)
+    strategy_config = StrategyNetConfig(
+        dim_of_tradable_asset=1,
+        dim_of_information_process=1,
+        number_of_layers=3,
+        nodes_in_intermediate_layers=36
+    )
     config = DeepHedgeConfig(derivative, torch.Tensor(initial_asset_price), strategy_config)
 
     dh = DeepHedge(config)

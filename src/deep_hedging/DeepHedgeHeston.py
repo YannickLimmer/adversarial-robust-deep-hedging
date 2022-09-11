@@ -7,12 +7,12 @@ from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
 class DeepHedgeHestonConfig(DeepHedgeConfig):
 
     def __post_init__(self):
-        if self.initial_asset_price.shape[0] != 3:
+        if self.initial_information_value.shape[0] != 3:
             raise AttributeError(
                 'Initial asset price must have three entries, initial asset price, initial volatility and initial '
                 'volatility swap price.'
             )
-        if self.strategy_config.dimension_of_asset != 2:
+        if self.strategy_config.dim_of_information_process != 2:
             raise AttributeError('Strategy requires 2 input dimensions.')
 
 

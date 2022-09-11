@@ -61,7 +61,12 @@ if __name__ == '__main__':
     gen_optimizer = torch.optim.Adam(generator.parameters())
 
     # Initialize Deep Hedge
-    strategy_config = StrategyNetConfig(dimension_of_asset=1, number_of_layers=3, nodes_in_intermediate_layers=36)
+    strategy_config = StrategyNetConfig(
+        dim_of_information_process=1,
+        dim_of_tradable_asset=1,
+        number_of_layers=3,
+        nodes_in_intermediate_layers=36,
+    )
     initial_asset_price_for_deep_hedge = torch.tensor([1.0])
     dh = DeepHedge(DeepHedgeConfig(derivative, initial_asset_price_for_deep_hedge, strategy_config))
     dh_optimizer = torch.optim.Adam(dh.parameters())

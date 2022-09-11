@@ -11,8 +11,10 @@ class StrategyNetConfig:
     """
     Configures a strategy layer.
 
-    :param dimension_of_asset: The dimension of the asset.
-    :type dimension_of_asset: int
+    :param dim_of_information_process: The dimension of the information process (without time).
+    :type dim_of_information_process: int
+    :param dim_of_tradable_asset: The dimension of the tradable asset price process.
+    :type dim_of_tradable_asset: int
     :param number_of_layers: The number of intermediate layers.
     :type number_of_layers: int
     :param nodes_in_intermediate_layers: The number of nodes used in intermediate layers.
@@ -23,7 +25,8 @@ class StrategyNetConfig:
     :type output_activation: nn.Module
     """
 
-    dimension_of_asset: int
+    dim_of_information_process: int
+    dim_of_tradable_asset: int
     number_of_layers: int
     nodes_in_intermediate_layers: int
     intermediate_activation: nn.Module = nn.ReLU()
@@ -50,7 +53,10 @@ class StrategyNet(nn.Module):
         super().__init__()
         self.config = config
 
-        self.input_layer = nn.Linear(self.config.dimension_of_asset + 1, self.config.nodes_in_intermediate_layers)
+        self.input_layer = nn.Linear(
+            self.config.dim_of_information_process + 1,
+            self.config.nodes_in_intermediate_layers,
+        )
 
         self.intermediate_layers = nn.ModuleDict({
             f'IntermediateLayer{layer_number}': nn.Linear(
@@ -59,7 +65,7 @@ class StrategyNet(nn.Module):
             ) for layer_number in range(self.config.number_of_layers)
         })
 
-        self.output_layer = nn.Linear(self.config.nodes_in_intermediate_layers, self.config.dimension_of_asset)
+        self.output_layer = nn.Linear(self.config.nodes_in_intermediate_layers, self.config.dim_of_tradable_asset)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -67,9 +73,11 @@ class StrategyNet(nn.Module):
         which are applied posterior to the configured activation. Eventually, the output activation and output layer are
         applied.
 
-        :param x: Input tensor of shape (n, d+1,), where n is the batch size and d the asset dimension.
+        :param x: Input tensor of shape (n, d'+1,), where n is the batch size and d' the dimension of the information
+        process.
         :type x: torch.Tensor
-        :return: Output tensor, the strategy, of shape (n, d,), where n is the batch size and d the asset dimension.
+        :return: Output tensor, the strategy, of shape (n, d,), where n is the batch size and d the dimension of the
+        tradable asset.
         :rtype: torch.Tensor
         """
         x = self.input_layer(x)

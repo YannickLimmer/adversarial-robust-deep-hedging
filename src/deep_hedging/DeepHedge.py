@@ -22,7 +22,7 @@ class DeepHedge(AbstractDeepHedge[DeepHedgeConfig]):
         return torch.cat(
             (
                 self.td.times[0] * torch.ones_like(inputs[:, 0, 0:1]),
-                self.config.initial_asset_price * torch.ones_like(inputs[:, 0, :]),
+                self.config.initial_information_value * torch.ones_like(inputs[:, 0, :]),
             ),
             dim=1,
         )
@@ -79,7 +79,7 @@ class DeepHedge(AbstractDeepHedge[DeepHedgeConfig]):
         :param wealth: The previous wealth value, a tensor of shape (n,), with n being the batch size.
         :type wealth: torch.Tensor
         :param inputs: The increments of the asset price process. A tensor of shape (n, m, d,), where n is the batch
-        size, m the number of time steps, and d the dimension of the asset.
+        size, m the number of time steps, and d the dimension of the tradable asset.
         :type inputs: torch.Tensor
         :param strategy_for_time_step: The strategy that resulted for this time step. A tensor of shape (n, d,), where n
         is the batch size and d the dimension of tradable assets.
