@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict, fields
 from typing import Dict, List
 
 import torch
@@ -16,24 +16,14 @@ class RobustDhGanMetrics(Metrics):
     generation_loss: torch.Tensor = None
 
     def create_print_dict(self) -> Dict[str, float]:
-        return {
-            'H-Loss': self.hedge_loss.item() if self.hedge_loss is not None else float('nan'),
-            'G-Loss': self.generation_loss.item() if self.generation_loss is not None else float('nan'),
-            'Penlty': self.penalty.item() if self.penalty is not None else float('nan'),
-        }
+        return {k: v.item() if v is not None else float('nan') for k, v in asdict(self).items()}
 
     @classmethod
-    def average_metric(cls, metric_list: List['RobustDhGanMetrics']) -> 'RobustDhGanMetrics':
+    def summarize_metrics_list_to_metrics(cls, metric_list: List['RobustDhGanMetrics']) -> 'RobustDhGanMetrics':
         return cls(
-            hedge_loss=None if metric_list[0].hedge_loss is None else torch.mean(
-                torch.tensor([metr.hedge_loss for metr in metric_list])
-            ),
-            penalty=None if metric_list[0].penalty is None else torch.mean(
-                torch.tensor([metr.penalty for metr in metric_list])
-            ),
-            generation_loss=None if metric_list[0].generation_loss is None else torch.mean(
-                torch.tensor([metr.generation_loss for metr in metric_list])
-            ),
+            **{f.name: None if getattr(metric_list[0], f.name) is None else torch.mean(
+                torch.tensor([getattr(metr, f.name) for metr in metric_list])
+            ) for f in fields(cls)},
         )
 
 
@@ -53,34 +43,37 @@ class RobustDhGan(Trainer[RobustDhGanMetrics]):
         self._train_generator = True
 
     def step(self, noise: torch.Tensor) -> RobustDhGanMetrics:
-        metrics = []
-        for batch in self.batch_inputs(noise):
-            metrics.append(self.step_on_batch(batch))
-        return RobustDhGanMetrics.average_metric(metrics)
-
-    def step_on_batch(self, batch):
         m = RobustDhGanMetrics()
+
         # Update Deep Hedge
         if self._train_hedge:
-            generated = self.gen_config.generator(batch)
+            # Generate and calculate hedge loss
+            generated = self.gen_config.generator(noise)
             profit_and_loss = self.hedge_config.deep_hedge(self.hedge_config.generation_adapters(generated))
             m.hedge_loss = self.hedge_config.hedge_objective(profit_and_loss)
+
+            # Compute gradients and update weights
             self.hedge_config.deep_hedge.zero_grad()
             m.hedge_loss.backward()
             self.hedge_config.optimizer.step()
             self.hedge_config.scheduler.step()
+
         # Update Generator
         if self._train_generator:
-            generated = self.gen_config.generator(batch)
+            # Generate and calculate penalized loss
+            generated = self.gen_config.generator(noise)
             if self._train_hedge:
                 profit_and_loss = self.hedge_config.deep_hedge(self.hedge_config.generation_adapters(generated))
                 m.hedge_loss = self.hedge_config.hedge_objective(profit_and_loss)
             m.penalty = self.gen_config.penalizer(self.gen_config.penalization_adapters(generated))
             m.generation_loss = m.penalty - (0.0 if not self._train_hedge else m.hedge_loss)
+
+            # Compute gradients and update weights
             self.gen_config.generator.zero_grad()
             m.generation_loss.backward()
             self.gen_config.optimizer.step()
             self.gen_config.scheduler.step()
+
         return m
 
     def deactivate_generation_training(self) -> None:
