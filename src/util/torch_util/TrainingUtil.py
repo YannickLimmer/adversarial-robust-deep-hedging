@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Callable, Optional, Dict, TypeVar, Generic
+from typing import List, Callable, Optional, Dict, TypeVar, Generic, get_args
 from tqdm.auto import tqdm
 
 import torch
@@ -75,20 +75,20 @@ class Trainer(torch.nn.Module, Generic[_Metrics], metaclass=ABCMeta):
         for step_number in pbar:
             inputs = self.generate_inputs(inputs, step_number)
             metrics = self.fit_on_batches(inputs, pbar_option)
-            pbar.set_postfix(metrics.create_print_dict())
+            pbar.set_postfix(metrics.create_print_dict()) if pbar_option.has_epoch_bar else None
             self.counter += 1
 
     def fit_on_batches(self, inputs: torch.Tensor, pbar_option: PbarOption) -> Metrics:
         batches = self.batch_inputs(inputs)
 
         m_list = []
-        pbar = tqdm(batches, leave=pbar_option.has_remaining_batch_bar) if pbar_option.has_epoch_bar else batches
+        pbar = tqdm(batches, leave=pbar_option.has_remaining_batch_bar) if pbar_option.has_batch_bar else batches
         for batch in pbar:
             m = self.step(batch)
             m_list.append(m)
-            pbar.set_postfix(m.create_print_dict())
+            pbar.set_postfix(m.create_print_dict()) if pbar_option.has_batch_bar else None
 
-        return _Metrics.summarize_metrics_list_to_metrics(m_list)
+        return get_args(type(self).__orig_bases__[0])[0].summarize_metrics_list_to_metrics(m_list)
 
     def generate_inputs(self, inputs: Optional[torch.Tensor], step_number: int) -> torch.Tensor:
         reg_fr = self.trainer_config.regeneration_frequency

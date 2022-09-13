@@ -2,17 +2,16 @@ from typing import Dict
 
 import numpy as np
 import torch
-from matplotlib import pyplot as plt
 
-from src.deep_hedging.DeepHedge import DeepHedge
 from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
+from src.deep_hedging.DeepHedge import DeepHedge
 from src.deep_hedging.DeepHedgeTrainer import DeepHedgeTrainer, DeepHedgeTrainerConfig
 from src.deep_hedging.StrategyNet import StrategyNetConfig
 from src.deep_hedging.objectives.HedgeObjective import MeanVariance
 from src.derivative.EuropeanCallOption import EuropeanCallOption
 from src.util.TimeUtil import UniformTimeDiscretization
 from src.util.processes.BlackScholesGenerator import BlackScholesGenerator
-from src.util.torch_util.TrainingUtil import TrainerConfig
+from src.util.torch_util.TrainingUtil import TrainerConfig, PbarOption
 
 
 def test_dh_trainer():
@@ -44,10 +43,10 @@ def test_dh_trainer():
 
     dh_trainer = DeepHedgeTrainer(
         DeepHedgeTrainerConfig(dh, obj, optimizer),
-        TrainerConfig(1000, 100000, generator, 1, callbacks=[print_metrics])
+        TrainerConfig(1000, 100000, generator, 1)
     )
 
-    dh_trainer.fit(5)
+    dh_trainer.fit(5, pbar_option=PbarOption.EPOCH_BAR)
 
     dh.eval()
     inputs = generator(5000)
@@ -57,4 +56,4 @@ def test_dh_trainer():
     # plt.scatter(term_a_v, res)
     # plt.show()
 
-    assert obj(res - np.maximum(term_a_v - derivative.strike, 0.0)) < 0.053
+    assert obj(torch.as_tensor(res - np.maximum(term_a_v - derivative.strike, 0.0))).item() < 0.055
