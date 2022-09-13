@@ -1,5 +1,5 @@
 from dataclasses import dataclass, asdict, fields
-from typing import Dict, List
+from typing import Dict, List, Optional, Tuple
 
 import torch
 
@@ -33,7 +33,7 @@ class RobustDhGan(Trainer[RobustDhGanMetrics]):
             self,
             hedge_config: DeepHedgeTrainerConfig,
             gen_config: SdeGeneratorTrainerConfig,
-            trainer_config: TrainerConfig
+            trainer_config: TrainerConfig,
     ):
         super().__init__(trainer_config)
         self.hedge_config = hedge_config
@@ -43,38 +43,49 @@ class RobustDhGan(Trainer[RobustDhGanMetrics]):
         self._train_generator = True
 
     def step(self, noise: torch.Tensor) -> RobustDhGanMetrics:
-        m = RobustDhGanMetrics()
+        hedge_loss = self.deep_hedge_step(noise)
+        generation_loss, penalty = self.generator_step(noise)
+        return RobustDhGanMetrics(hedge_loss, penalty, generation_loss)
 
-        # Update Deep Hedge
+    def deep_hedge_step(self, noise: torch.Tensor) -> Optional[torch.Tensor]:
         if self._train_hedge:
-            # Generate and calculate hedge loss
-            generated = self.gen_config.generator(noise)
-            profit_and_loss = self.hedge_config.deep_hedge(self.hedge_config.generation_adapters(generated))
-            m.hedge_loss = self.hedge_config.hedge_objective(profit_and_loss)
+            hedge_loss = self.compute_hedge_loss(noise)
+            self.update_deep_hedge(hedge_loss)
+            return hedge_loss
 
-            # Compute gradients and update weights
-            self.hedge_config.deep_hedge.zero_grad()
-            m.hedge_loss.backward()
-            self.hedge_config.optimizer.step()
-            self.hedge_config.scheduler.step()
+    def update_deep_hedge(self, hedge_loss: torch.Tensor) -> None:
+        self.hedge_config.deep_hedge.zero_grad()
+        hedge_loss.backward()
+        self.hedge_config.optimizer.step()
+        self.hedge_config.scheduler.step()
 
-        # Update Generator
+    def compute_hedge_loss(self, noise: torch.Tensor) -> torch.Tensor:
+        generated = self.gen_config.generator(noise)
+        return self.compute_hedge_loss_from_generated(generated)
+
+    def compute_hedge_loss_from_generated(self, generated: torch.Tensor) -> torch.Tensor:
+        profit_and_loss = self.hedge_config.deep_hedge(self.hedge_config.generation_adapters(generated))
+        return self.hedge_config.hedge_objective(profit_and_loss)
+
+    def generator_step(self, noise) -> Tuple[Optional[torch.Tensor], Optional[torch.Tensor]]:
         if self._train_generator:
-            # Generate and calculate penalized loss
-            generated = self.gen_config.generator(noise)
-            if self._train_hedge:
-                profit_and_loss = self.hedge_config.deep_hedge(self.hedge_config.generation_adapters(generated))
-                m.hedge_loss = self.hedge_config.hedge_objective(profit_and_loss)
-            m.penalty = self.gen_config.penalizer(self.gen_config.penalization_adapters(generated))
-            m.generation_loss = m.penalty - (0.0 if not self._train_hedge else m.hedge_loss)
+            generation_loss, penalty = self.compute_generation_loss(noise)
+            self.update_generator(generation_loss)
+            return generation_loss, penalty
+        # Metrics can deal with None values.
+        return None, None
 
-            # Compute gradients and update weights
-            self.gen_config.generator.zero_grad()
-            m.generation_loss.backward()
-            self.gen_config.optimizer.step()
-            self.gen_config.scheduler.step()
+    def update_generator(self, generation_loss: torch.Tensor) -> None:
+        self.gen_config.generator.zero_grad()
+        generation_loss.backward()
+        self.gen_config.optimizer.step()
+        self.gen_config.scheduler.step()
 
-        return m
+    def compute_generation_loss(self, noise: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        generated = self.gen_config.generator(noise)
+        updated_hedge_loss = self.compute_hedge_loss_from_generated(generated) if self._train_hedge else 0.0
+        penalty = self.gen_config.penalizer(self.gen_config.penalization_adapters(generated))
+        return (penalty - updated_hedge_loss), penalty
 
     def deactivate_generation_training(self) -> None:
         self._train_generator = False
