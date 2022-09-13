@@ -14,9 +14,10 @@ class DeepHedgeTrainerConfig:
     deep_hedge: DeepHedge
     hedge_objective: HedgeObjective
     optimizer: torch.optim.Optimizer
-    generation_adapters: AdapterList = AdapterList()
+    generation_adapters: AdapterList = None
 
     def __post_init__(self):
+        self.generation_adapters = self.generation_adapters if self.generation_adapters else AdapterList()
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.9)
 
     def reset_scheduler(self) -> None:

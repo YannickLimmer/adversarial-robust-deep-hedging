@@ -4,6 +4,7 @@ from typing import TypeVar, Callable, Generic
 
 import numpy as np
 import torch
+from torch import nn
 from torch.nn import Module
 
 from src.config import DEVICE
@@ -23,12 +24,12 @@ class Metric(Module, Generic[_MetricConfig], metaclass=ABCMeta):
             self,
             original: torch.Tensor,
             metric_config: _MetricConfig,
-            transform: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
+            transform: Callable[[torch.Tensor], torch.Tensor] = None,
     ):
         super().__init__()
         self.original = original
         self.config = metric_config
-        self.transform = transform
+        self.transform = transform if transform else nn.Identity()
 
     @abstractmethod
     def forward(self, generated):

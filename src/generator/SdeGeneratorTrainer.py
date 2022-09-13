@@ -12,9 +12,10 @@ class SdeGeneratorTrainerConfig:
     generator: SdeGenerator
     penalizer: Metric
     optimizer: torch.optim.Optimizer
-    penalization_adapters: AdapterList = AdapterList()
+    penalization_adapters: AdapterList = None
 
     def __post_init__(self):
+        self.penalization_adapters = self.penalization_adapters if self.penalization_adapters else AdapterList()
         self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=100, gamma=0.9)
 
     def reset_scheduler(self) -> None:
