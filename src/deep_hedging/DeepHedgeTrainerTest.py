@@ -43,10 +43,10 @@ def test_dh_trainer():
 
     dh_trainer = DeepHedgeTrainer(
         DeepHedgeTrainerConfig(dh, obj, optimizer),
-        TrainerConfig(1000, 100000, generator, 1)
+        TrainerConfig(100000, generator, 1)
     )
 
-    dh_trainer.fit(5, pbar_option=PbarOption.EPOCH_BAR)
+    dh_trainer.fit([1000]*5, pbar_option=PbarOption.EPOCH_BAR)
 
     dh.eval()
     inputs = generator(5000)
