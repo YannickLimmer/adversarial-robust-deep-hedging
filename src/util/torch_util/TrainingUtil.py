@@ -2,6 +2,9 @@ from abc import abstractmethod, ABCMeta
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Callable, Optional, Dict, TypeVar, Generic, get_args, Any
+
+import numpy as np
+from numpy.typing import NDArray
 from tqdm.auto import tqdm
 
 import torch
@@ -22,6 +25,11 @@ class Metrics(metaclass=ABCMeta):
 
     @abstractmethod
     def create_print_dict(self) -> Dict[str, float]:
+        pass
+
+    @property
+    @abstractmethod
+    def loss(self) -> NDArray:
         pass
 
     @classmethod
@@ -80,11 +88,13 @@ class Trainer(torch.nn.Module, Generic[_Metrics], metaclass=ABCMeta):
             batch_sizes: List[int],
             pbar_option: PbarOption = PbarOption.VANISHING_BATCH_BAR,
             pretrained: Optional[Any] = None,
+            loss_curve_address: Optional[Any] = None,
+            parameter_tracking_address: Optional[Any] = None,
     ) -> None:
         try:
             self.load_module_from_state_dict(f)
         except FileNotFoundError:
-            self.fit(batch_sizes, pbar_option, pretrained)
+            self.fit(batch_sizes, pbar_option, pretrained, loss_curve_address, parameter_tracking_address)
 
     @abstractmethod
     def load_module_from_state_dict(self, f: Any) -> None:
@@ -95,6 +105,8 @@ class Trainer(torch.nn.Module, Generic[_Metrics], metaclass=ABCMeta):
             batch_sizes: List[int],
             pbar_option: PbarOption = PbarOption.VANISHING_BATCH_BAR,
             pretrained: Optional[Any] = None,
+            loss_curve_address: Optional[Any] = None,
+            parameter_tracking_address: Optional[Any] = None,
     ) -> None:
         if pretrained:
             self.load_module_from_state_dict(pretrained)
@@ -105,11 +117,21 @@ class Trainer(torch.nn.Module, Generic[_Metrics], metaclass=ABCMeta):
         ) if pbar_option.has_epoch_bar else enumerate(batch_sizes)
 
         inputs = None
+        losses = []
+        parameters_for_epoch = []
         for epoch, batch_size in bs_pbar:
             inputs = self.generate_inputs(inputs, epoch)
             metrics = self.fit_on_batches(inputs, batch_size, pbar_option)
             bs_pbar.set_postfix(metrics.create_print_dict()) if pbar_option.has_epoch_bar else None
+            losses.append(metrics.loss)
+            parameters_for_epoch.append({k: v.clone().detach().numpy() for k, v in self.named_parameters()})
             self.counter += 1
+
+        if loss_curve_address:
+            np.save(loss_curve_address, np.stack(losses, axis=0))
+
+        if parameter_tracking_address:
+            np.save(parameter_tracking_address, parameters_for_epoch)
 
     def fit_on_batches(self, inputs: torch.Tensor, batch_size: int, pbar_option: PbarOption) -> Metrics:
         batches = self.batch_inputs(inputs, batch_size)

@@ -1,6 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 
+import numpy as np
 import torch
 
 from src.config import DEVICE
@@ -93,4 +94,4 @@ class LeadLagWithTime(BaseAugmentation):
 
 
 def get_time_steps(batch_size: int, td: TimeDiscretization) -> torch.Tensor:
-    return torch.as_tensor(td.times, dtype=torch.float32, device=DEVICE)[None, :, None].repeat(batch_size, 1, 1)
+    return torch.from_numpy(np.copy(td.times))[None, :, None].repeat(batch_size, 1, 1)

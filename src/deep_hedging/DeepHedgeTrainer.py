@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import Dict, Any, List, OrderedDict, Optional
 
 import torch
+from numpy.typing import NDArray
+from torch.optim.lr_scheduler import StepLR
 
 from src.deep_hedging.DeepHedge import DeepHedge
 from src.deep_hedging.objectives.HedgeObjective import HedgeObjective
@@ -19,8 +21,12 @@ class DeepHedgeTrainerConfig:
     def __post_init__(self):
         self.generation_adapters = self.generation_adapters if self.generation_adapters else AdapterList()
 
-    def reset_scheduler(self) -> None:
-        self.__post_init__()
+    def scheduler_from_optimizer(self, optimizer: torch.optim.Optimizer) -> StepLR:
+        return torch.optim.lr_scheduler.StepLR(
+            optimizer,
+            step_size=self.scheduler_step_size,
+            gamma=self.scheduler_gamma,
+        )
 
 
 @dataclass
@@ -28,6 +34,10 @@ class HedgeMetrics(Metrics):
 
     profit_and_loss: torch.Tensor = None
     hedge_loss: torch.Tensor = None
+
+    @property
+    def loss(self) -> NDArray:
+        return self.hedge_loss.item()
 
     def create_print_dict(self) -> Dict[str, float]:
         return {'H-Loss': self.hedge_loss.item() if self.hedge_loss is not None else float('nan')}
@@ -51,12 +61,7 @@ class DeepHedgeTrainer(Trainer[HedgeMetrics]):
         self.dh = dh
         self.optimizer = torch.optim.Adam(self.dh.parameters())
         self.config = config
-
-        self.scheduler = torch.optim.lr_scheduler.StepLR(
-            self.optimizer,
-            step_size=self.config.scheduler_step_size,
-            gamma=self.config.scheduler_gamma,
-        )
+        self.scheduler = self.config.scheduler_from_optimizer(self.optimizer)
 
     def step(self, inputs: torch.Tensor) -> HedgeMetrics:
         m = HedgeMetrics()
@@ -69,7 +74,7 @@ class DeepHedgeTrainer(Trainer[HedgeMetrics]):
         self.dh.zero_grad()
         m.hedge_loss.backward()
         self.optimizer.step()
-        self.scheduler.step()
+        # self.scheduler.step()
 
         return m
 
@@ -79,8 +84,9 @@ class DeepHedgeTrainer(Trainer[HedgeMetrics]):
             batch_sizes: List[int],
             pbar_option: PbarOption = PbarOption.NO_BAR,
             pretrained: Optional[Any] = None,
+            loss_curve_address: Optional[Any] = None,
     ) -> OrderedDict[str, torch.Tensor]:
-        self.load_or_fit(f, batch_sizes, pbar_option, pretrained)
+        self.load_or_fit(f, batch_sizes, pbar_option, pretrained, loss_curve_address)
         return self.dh.state_dict()
 
     def load_module_from_state_dict(self, f: Any) -> None:

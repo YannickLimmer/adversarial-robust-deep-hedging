@@ -1,7 +1,7 @@
 import torch
 
 from src.deep_hedging.DeepHedge import DeepHedge
-from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
+from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig, AbstractDeepHedge
 
 
 class DeepHedgeHestonConfig(DeepHedgeConfig):
@@ -18,7 +18,7 @@ class DeepHedgeHestonConfig(DeepHedgeConfig):
             raise AttributeError('Strategy requires 2 input dimensions.')
 
 
-class DeepHedgeHeston(DeepHedge[DeepHedgeHestonConfig]):
+class DeepHedgeHeston(DeepHedge, AbstractDeepHedge[DeepHedgeHestonConfig]):
 
     """
     Implements the deep hedge for the Heston model. In particular the input structure expects three-dimensional process

@@ -15,6 +15,30 @@ class HestonParameterSet:
     vol_of_vol: float
     correlation: float
 
+    def normalize_drift(self, drift):
+        return drift / self.drift if self.drift != 0 else self.drift
+
+    def denormalize_drift(self, normalized_drift):
+        return normalized_drift * self.drift if self.drift != 0 else self.drift
+
+    def normalize_reversion_speed(self, reversion_speed):
+        return reversion_speed / self.reversion_speed
+
+    def denormalize_reversion_speed(self, normalized_reversion_speed):
+        return normalized_reversion_speed * self.reversion_speed
+
+    def normalize_reversion_level(self, reversion_level):
+        return reversion_level / self.reversion_level
+
+    def denormalize_reversion_level(self, normalized_reversion_level):
+        return normalized_reversion_level * self.reversion_level
+
+    def normalize_vol_of_vol(self, vol_of_vol):
+        return vol_of_vol / self.vol_of_vol
+
+    def denormalize_vol_of_vol(self, normalized_vol_of_vol):
+        return normalized_vol_of_vol * self.vol_of_vol
+
 
 class HestonGenerator(EulerMaruyamaGenerator):
 
@@ -54,4 +78,4 @@ class HestonGenerator(EulerMaruyamaGenerator):
 
     def get_correction_term(self, ttm: NDArray, volatility_process: NDArray) -> NDArray:
         return (volatility_process - self.pars.reversion_level) / self.pars.reversion_speed \
-            * (1 - np.exp(- self.pars.reversion_speed * ttm)) + self.pars.reversion_level * ttm
+               * (1 - np.exp(- self.pars.reversion_speed * ttm)) + self.pars.reversion_level * ttm

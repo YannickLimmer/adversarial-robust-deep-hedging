@@ -23,9 +23,33 @@ class HestonDriftCoefficient(Coefficient[HestonCoefficientConfig]):
     def __init__(self, config: HestonCoefficientConfig):
         super().__init__(config)
 
-        self.drift = nn.Parameter(torch.tensor(self.config.initializer.drift, dtype=torch.float32))
-        self.reversion_speed = nn.Parameter(torch.tensor(self.config.initializer.reversion_speed, dtype=torch.float32))
-        self.reversion_level = nn.Parameter(torch.tensor(self.config.initializer.reversion_level, dtype=torch.float32))
+        self._drift = nn.Parameter(torch.tensor(
+            self.config.initializer.normalize_drift(self.config.initializer.drift),
+            dtype=torch.float32,
+        ))
+        self._reversion_speed = nn.Parameter(torch.tensor(self.config.initializer.reversion_speed, dtype=torch.float32))
+        self._reversion_speed = nn.Parameter(torch.tensor(
+            self.config.initializer.normalize_reversion_speed(self.config.initializer.reversion_speed),
+            dtype=torch.float32,
+        ))
+        self._reversion_level = nn.Parameter(torch.tensor(
+            self.config.initializer.normalize_reversion_level(self.config.initializer.reversion_level),
+            dtype=torch.float32,
+        ))
+
+    @property
+    def drift(self) -> torch.Tensor:
+        return self.config.initializer.denormalize_drift(self._drift)
+
+    @property
+    def reversion_speed(self) -> torch.Tensor:
+        return self.config.initializer.denormalize_reversion_speed(self._reversion_speed)
+
+    @property
+    def reversion_level(self) -> torch.Tensor:
+        return self.config.initializer.denormalize_reversion_level(
+            torch.clamp(self._reversion_level, torch.tensor([0]))
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.eliminate_time_if_time_invariant(x)
@@ -44,12 +68,15 @@ class HestonDiffusionCoefficient(Coefficient[HestonCoefficientConfig]):
     def __init__(self, config: HestonCoefficientConfig):
         super().__init__(config)
 
-        self._vol_of_vol = nn.Parameter(torch.tensor(self.config.initializer.vol_of_vol, dtype=torch.float32))
+        self._vol_of_vol = nn.Parameter(torch.tensor(
+            self.config.initializer.normalize_vol_of_vol(self.config.initializer.vol_of_vol),
+            dtype=torch.float32,
+        ))
         self._correlation = nn.Parameter(torch.tensor(self.config.initializer.correlation, dtype=torch.float32))
 
     @property
     def vol_of_vol(self):
-        return torch.clamp(self._vol_of_vol, torch.tensor([0]))
+        return self.config.initializer.denormalize_vol_of_vol(torch.clamp(self._vol_of_vol, torch.tensor([0])))
 
     @property
     def correlation(self):
