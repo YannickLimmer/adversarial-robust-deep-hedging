@@ -14,7 +14,7 @@ class VolatilityComparisonConfig(MetricConfig):
     td: TimeDiscretization
 
     def __post_init__(self):
-        self.time_root = torch.as_tensor(np.sqrt(self.td.times), dtype=torch.float32, device=DEVICE)[1:, None]
+        self.time_root = torch.as_tensor(np.sqrt(self.td.time_step_increments), dtype=torch.float32, device=DEVICE)
 
 
 class CompareVolatility(Metric[VolatilityComparisonConfig]):
@@ -27,9 +27,9 @@ class CompareVolatility(Metric[VolatilityComparisonConfig]):
     def forward(self, generated: torch.Tensor) -> torch.Tensor:
         generated_volatility = self.to_volatility(generated)
         return self.transform(
-            torch.mean(torch.abs(self.original_volatility ** 2 - generated_volatility ** 2)),
+            torch.abs(self.original_volatility ** 2 - generated_volatility ** 2),
         )
 
     def to_volatility(self, arr: torch.Tensor) -> torch.Tensor:
-        log_arr = torch.log(arr)[:, 1:, :]
-        return torch.std((log_arr - torch.mean(log_arr, dim=0)) / self.config.time_root, dim=0, unbiased=True)
+        log_incr = torch.diff(torch.log(arr), 1, 1)
+        return torch.std((log_incr - torch.mean(log_incr, dim=0)) / self.config.time_root)
