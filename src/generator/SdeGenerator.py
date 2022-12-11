@@ -4,6 +4,7 @@ from typing import Callable, Generic
 import torch
 from torch import nn
 
+from src.config import DEVICE
 from src.generator.Coefficient import Coefficient, _Drift_Coefficient, _Diffusion_Coefficient
 from src.util.TimeUtil import TimeDiscretization
 
@@ -43,7 +44,7 @@ class SdeGenerator(torch.nn.Module, Generic[_Drift_Coefficient, _Diffusion_Coeff
         return self.config.initial_asset_price if self.config.initial_asset_price is not None else trainable_initial
 
     def forward(self, noise: torch.Tensor) -> torch.Tensor:
-        process = [torch.ones_like(noise[:, 0, :]) * self.initial_asset_price()]
+        process = [torch.ones_like(noise[:, 0, :], device=DEVICE) * self.initial_asset_price()]
         for index in self.config.td.indices:
             process_coupled_with_time = self.couple_with_time(process[-1], self.config.td.times[index])
             drift_increment = self.drift(process_coupled_with_time) * self.config.td.time_step_increments[index]
@@ -55,5 +56,5 @@ class SdeGenerator(torch.nn.Module, Generic[_Drift_Coefficient, _Diffusion_Coeff
 
     @staticmethod
     def couple_with_time(arr: torch.Tensor, time: float) -> torch.Tensor:
-        return torch.cat((time * torch.ones(arr.shape[0], 1), arr), dim=1)
+        return torch.cat((time * torch.ones(arr.shape[0], 1, device=DEVICE), arr), dim=1)
 

@@ -124,7 +124,7 @@ class Trainer(torch.nn.Module, Generic[_Metrics], metaclass=ABCMeta):
             metrics = self.fit_on_batches(inputs, batch_size, pbar_option)
             bs_pbar.set_postfix(metrics.create_print_dict()) if pbar_option.has_epoch_bar else None
             losses.append(metrics.loss)
-            parameters_for_epoch.append({k: v.clone().detach().numpy() for k, v in self.named_parameters()})
+            parameters_for_epoch.append(self.tracked_parameters)
             self.counter += 1
 
         if loss_curve_address:
@@ -132,6 +132,11 @@ class Trainer(torch.nn.Module, Generic[_Metrics], metaclass=ABCMeta):
 
         if parameter_tracking_address:
             np.save(parameter_tracking_address, parameters_for_epoch)
+
+    @property
+    @abstractmethod
+    def tracked_parameters(self) -> Dict[str, NDArray]:
+        pass
 
     def fit_on_batches(self, inputs: torch.Tensor, batch_size: int, pbar_option: PbarOption) -> Metrics:
         batches = self.batch_inputs(inputs, batch_size)
@@ -162,6 +167,6 @@ def gen_factory(path_gen: torch.nn.Module, noise_gen: Callable[[int], torch.Tens
     to_increments = ConvertToIncrements()
 
     def gen(n: int) -> torch.Tensor:
-        return to_increments(path_gen(noise_gen(n)).detach())
+        return to_increments(path_gen(noise_gen(n)))
 
     return gen

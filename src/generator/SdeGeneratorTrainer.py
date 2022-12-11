@@ -90,3 +90,7 @@ class SdeGeneratorTrainer(Trainer[SdeGeneratorMetrics]):
 
     def load_module_from_state_dict(self, f: Any) -> None:
         self.gen.load_state_dict(torch.load(f))
+
+    @property
+    def tracked_parameters(self) -> Dict[str, NDArray]:
+        return {k: v.clone().detach().numpy() for k, v in self.named_parameters()}

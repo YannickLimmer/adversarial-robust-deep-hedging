@@ -119,6 +119,10 @@ class RobustDhGan(Trainer[RobustDhGanMetrics]):
         self.load_or_fit(f, batch_sizes, pbar_option, pretrained, loss_curve_address, parameter_tracking_address)
         return self.state_dict()
 
+    @property
+    def tracked_parameters(self) -> Dict[str, NDArray]:
+        return {k: v.clone().detach().numpy() for k, v in self.gen.named_parameters()}
+
     def deactivate_generation_training(self) -> None:
         self._train_generator = False
 

@@ -1,5 +1,7 @@
 import torch
+from torch.cuda import device
 
+from src.config import DEVICE
 from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig, AbstractDeepHedge
 
 
@@ -29,8 +31,8 @@ class DeepHedge(AbstractDeepHedge[DeepHedgeConfig]):
         """
         return torch.cat(
             (
-                self.td.times[0] * torch.ones_like(inputs[:, 0, 0:1]),
-                self.config.initial_information_value * torch.ones_like(inputs[:, 0, :]),
+                self.td.times[0] * torch.ones_like(inputs[:, 0, 0:1], device=DEVICE),
+                self.config.initial_information_value * torch.ones_like(inputs[:, 0, :], device=DEVICE),
             ),
             dim=1,
         )
@@ -62,7 +64,7 @@ class DeepHedge(AbstractDeepHedge[DeepHedgeConfig]):
         """
         return torch.cat(
             (
-                self.td.times[time_step_index + 1] * torch.ones_like(inputs[:, 0, 0:1]),
+                self.td.times[time_step_index + 1] * torch.ones_like(inputs[:, 0, 0:1], device=DEVICE),
                 information[:, 1:] + inputs[:, time_step_index],
             ),
             dim=1,

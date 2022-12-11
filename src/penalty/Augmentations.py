@@ -94,4 +94,4 @@ class LeadLagWithTime(BaseAugmentation):
 
 
 def get_time_steps(batch_size: int, td: TimeDiscretization) -> torch.Tensor:
-    return torch.from_numpy(np.copy(td.times))[None, :, None].repeat(batch_size, 1, 1)
+    return torch.tensor(np.copy(td.times), device=DEVICE)[None, :, None].repeat(batch_size, 1, 1)
