@@ -5,6 +5,8 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
+from src.config import DEVICE
+
 
 class StochasticProcessGenerator(metaclass=ABCMeta):
 
@@ -123,6 +125,7 @@ class StochasticProcessGenerator(metaclass=ABCMeta):
             times: NDArray,
             stochastic_increments: Optional[NDArray] = None,
             random_number_generator: Optional[np.random.Generator] = None,
+            device: torch.cuda.device = DEVICE,
     ) -> Callable[[int], torch.Tensor]:
 
         def generator(n: int) -> torch.Tensor:
@@ -130,8 +133,8 @@ class StochasticProcessGenerator(metaclass=ABCMeta):
                 np.ones((n, 1)) * initial_value[None, :],
                 times,
                 stochastic_increments,
-                random_number_generator
-            ), dtype=torch.float32)
+                random_number_generator,
+            ), dtype=torch.float32, device=device)
 
         return generator
 
@@ -141,6 +144,7 @@ class StochasticProcessGenerator(metaclass=ABCMeta):
             times: NDArray,
             stochastic_increments: Optional[NDArray] = None,
             random_number_generator: Optional[np.random.Generator] = None,
+            device: torch.cuda.device = DEVICE,
     ) -> Callable[[int], torch.Tensor]:
 
         def generator(n: int) -> torch.Tensor:
@@ -149,6 +153,6 @@ class StochasticProcessGenerator(metaclass=ABCMeta):
                 times,
                 stochastic_increments,
                 random_number_generator
-            ), dtype=torch.float32), 1, 1)
+            ), dtype=torch.float32, device=device), 1, 1)
 
         return generator

@@ -6,6 +6,7 @@ from typing import TypeVar, Generic
 import torch
 from torch import nn
 
+from src.config import DEVICE
 from src.deep_hedging.StrategyNet import StrategyNetConfig, StrategyNet
 from src.derivative.Derivative import Derivative
 
@@ -134,7 +135,7 @@ class AbstractDeepHedge(nn.Module, Generic[_DeepHedgeConfig], metaclass=ABCMeta)
         here.
         :rtype: torch.Tensor
         """
-        return torch.zeros((inputs.shape[0]))
+        return torch.zeros((inputs.shape[0]), device=DEVICE)
 
     @abstractmethod
     def _update_information(

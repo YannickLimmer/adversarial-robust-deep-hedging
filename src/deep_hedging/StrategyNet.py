@@ -4,6 +4,8 @@ from typing import Callable
 import torch
 from torch import nn
 
+from src.config import DEVICE
+
 
 @dataclass
 class StrategyNetConfig:
@@ -56,16 +58,22 @@ class StrategyNet(nn.Module):
         self.input_layer = nn.Linear(
             self.config.dim_of_information_process + 1,
             self.config.nodes_in_intermediate_layers,
+            device=DEVICE,
         )
 
         self.intermediate_layers = nn.ModuleDict({
             f'IntermediateLayer{layer_number}': nn.Linear(
                 self.config.nodes_in_intermediate_layers,
                 self.config.nodes_in_intermediate_layers,
+                device=DEVICE,
             ) for layer_number in range(self.config.number_of_layers)
         })
 
-        self.output_layer = nn.Linear(self.config.nodes_in_intermediate_layers, self.config.dim_of_tradable_asset)
+        self.output_layer = nn.Linear(
+            self.config.nodes_in_intermediate_layers,
+            self.config.dim_of_tradable_asset,
+            device=DEVICE,
+        )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
