@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.scenario.processes.BrownianMotionGenerator import BrownianMotionGenerator
+from src.util.processes.BrownianMotionGenerator import BrownianMotionGenerator
 
 
 def test_bm_generator():

@@ -1,5 +1,7 @@
 # Adversarial Robust Deep Hedging
 
+## Objective
+
 This repository solves problems of the type:
 
 Maximize
@@ -20,3 +22,19 @@ This should then maximize
 
 - a utility functional $R$, which is
 - penalized by $\alpha(P$), a penalty which is necessarily characterized as the function of the Sig-Wasserstein-distance of $P$ to some reference measure $Q$.
+
+## Structure
+
+The repository contains three core modules,
+
+ - `generation`
+ - `deep_hedging`
+ - `penalty`
+
+mimicking the three tasks that are united to solve problems as outlined above. 
+
+Another module, `gan` focuses on the interplay of the three mentioned modules and provides the machinery for training
+procedures.
+
+An overview of the architecture provided in the `Structure.puml`, which yields:
+![Project structure](Structure.png)

@@ -12,11 +12,15 @@ class CoefficientNetConfig(CoefficientConfig):
     number_of_layers: int
     nodes_in_intermediate_layers: int
     dim_of_process: int
-    intermediate_activation: nn.Module = nn.ReLU()
-    output_activation: nn.Module = nn.ReLU()
-    transformation: Callable[[torch.Tensor], torch.Tensor] = nn.Identity()
+    intermediate_activation: nn.Module = None
+    output_activation: nn.Module = None
+    transformation: Callable[[torch.Tensor], torch.Tensor] = None
 
     def __post_init__(self):
+        self.intermediate_activation = self.intermediate_activation if self.intermediate_activation else nn.ReLU()
+        self.output_activation = self.output_activation if self.output_activation else nn.Identity()
+        self.transformation = self.transformation if self.transformation else nn.Identity()
+
         self.dimension_of_process = self.dim_of_process
 
 

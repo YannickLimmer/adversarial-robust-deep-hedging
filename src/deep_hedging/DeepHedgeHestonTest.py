@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 
-from src.deep_hedging.DeepHedge import DeepHedgeConfig, DeepHedge
+from src.deep_hedging.DeepHedge import DeepHedge
+from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
 from src.deep_hedging.StrategyNet import StrategyNetConfig
 from src.deep_hedging.objectives.HedgeObjective import MeanVariance
 from src.derivative.EuropeanCallOption import EuropeanCallOption
@@ -27,6 +28,8 @@ derivative = EuropeanCallOption(strike=1.0, time_discretization=td, price=0.0)
 
 def test_dh_heston():
 
+    # TODO. This test does not work.
+
     coef_config = HestonCoefficientConfig(heston_parameters, initial_asset_price=1.0)
     drift_coef, diffusion_coef = HestonDriftCoefficient(coef_config), HestonDiffusionCoefficient(coef_config)
     gen_config = GeneratorConfig(td, drift_coef.get_initial_asset_price, drift_coef, diffusion_coef)
@@ -39,7 +42,12 @@ def test_dh_heston():
         random_number_generator=np.random.default_rng(4444),
     )
 
-    strategy_config = StrategyNetConfig(dimension_of_asset=2, number_of_layers=3, nodes_in_intermediate_layers=36)
+    strategy_config = StrategyNetConfig(
+        dim_of_information_process=2,
+        dim_of_tradable_asset=2,
+        number_of_layers=3,
+        nodes_in_intermediate_layers=36,
+    )
     initial_asset_price_for_deep_hedge = torch.tensor([1.0, heston_parameters.reversion_level], dtype=torch.float32)
     deep_hedge = DeepHedge(DeepHedgeConfig(derivative, initial_asset_price_for_deep_hedge, strategy_config))
 

@@ -1,101 +1,116 @@
-from dataclasses import dataclass
-from typing import TypeVar, Generic
-
-import numpy as np
 import torch
-from torch import nn
+from torch.cuda import device
 
-from src.deep_hedging.StrategyNet import StrategyNetConfig, StrategyNet
-from src.derivative.Derivative import Derivative
-
-
-@dataclass
-class DeepHedgeConfig:
-    derivative: Derivative
-    initial_asset_price: torch.Tensor
-    strategy_config: StrategyNetConfig
-
-    def __post_init__(self):
-        if self.initial_asset_price.shape[0] != self.strategy_config.dimension_of_asset:
-            raise AttributeError(
-                'Initial asset price dimension does not coincide with asset price dimension of strategy specs.',
-            )
+from src.config import DEVICE
+from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig, AbstractDeepHedge
 
 
-_DeepHedgeConfig = TypeVar('_DeepHedgeConfig', bound=DeepHedgeConfig)
+class DeepHedge(AbstractDeepHedge[DeepHedgeConfig]):
 
+    """
+    A straightforward implementation of the abstract deep hedge. The data is provided as the increments of the asset
+    price process, of which all components are available as information and tradable.
 
-class DeepHedge(nn.Module, Generic[_DeepHedgeConfig]):
+    :param config: A generic configuration class. Provides all required information for deep hedging.
+    :type config: Generic[_DeepHedgeConfig]
+    """
 
-    def __init__(self, config: _DeepHedgeConfig):
-        super().__init__()
-        self.config = config
-        self.td = config.derivative.td
+    def _extract_initial_information(self, inputs: torch.Tensor) -> torch.Tensor:
+        """
+        Constructs a tensor in the shape of the information process containing the initial time and the initial asset
+        price value for each scenario.
 
-        self.strategy_layer = StrategyNet(self.config.strategy_config)
-
-    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        information = self.extract_initial_information(inputs)
-        wealth = self.create_initial_wealth(inputs)
-
-        strategy = []
-        for time_step_index in self.td.indices:
-            strategy.append(self.strategy_layer(self.filter_information(information)))
-            information = self.update_information(information, inputs, time_step_index)
-            wealth = self.update_wealth(wealth, inputs, strategy[-1], time_step_index)
-
-        profit_and_loss = self.calculate_profit_and_loss(information, wealth)
-
-        if self.training:
-            return self._prepare_pnl_for_training(profit_and_loss)
-
-        return torch.stack(strategy, dim=1)
-
-    def extract_initial_information(self, inputs: torch.Tensor) -> torch.Tensor:
+        :param inputs: The input tensor passed to the deep hedge. A tensor of shape (n, m, d' - 1,), where n is the
+        batch size, m the number of time steps, and d' the dimension of the information process (containing a time
+        component).
+        :type inputs: torch.Tensor
+        :return: The initial information that contains the time of the first time step. A tensor of shape (n, d',),
+        where n is the batch size and d' the dimension of the information process. The time component is added at
+        position 0 of axis 1.
+        :rtype: torch.Tensor
+        """
         return torch.cat(
             (
-                self.td.times[0] * torch.ones_like(inputs[:, 0, 0:1]),
-                self.config.initial_asset_price * torch.ones_like(inputs[:, 0, :]),
+                self.td.times[0] * torch.ones_like(inputs[:, 0, 0:1], device=DEVICE),
+                self.config.initial_information_value * torch.ones_like(inputs[:, 0, :], device=DEVICE),
             ),
             dim=1,
         )
 
-    # noinspection PyMethodMayBeStatic
-    def create_initial_wealth(self, inputs: torch.Tensor) -> torch.Tensor:
-        return torch.zeros((inputs.shape[0]))
+    def _update_information(
+            self,
+            information: torch.Tensor,
+            inputs: torch.Tensor,
+            time_step_index: int,
+    ) -> torch.Tensor:
 
-    def update_information(self, information: torch.Tensor, inputs: torch.Tensor, time_step_index: int) -> torch.Tensor:
+        """
+        Yields a tensor containing the information for the next time step.
+
+        :param information: The (unfiltered) information of the previous time step, a tensor of shape (n, d',), where n
+        is the batch size and d' the dimension of the information process.
+        :type information: torch.Tensor
+        :param inputs: The increments of the information process without time. A tensor of shape (n, m, d' - 1,), where
+        n is the batch size, m the number of time steps, and d' the dimension of the information process (containing a
+        time component).
+        :type inputs: torch.Tensor
+        :param time_step_index: The time step index of the current time period. Gives full information of time when used
+        on the `td` attribute.
+        :type time_step_index: int
+        :return: The (unfiltered) information for the next time step, a tensor of shape (n, d',), where n is the batch
+        size and d' the dimension of the information process. This is obtained by adding the increments of the
+        information process and updating the time in the first entry along the second axis.
+        :rtype: torch.Tensor
+        """
         return torch.cat(
             (
-                self.td.times[time_step_index + 1] * torch.ones_like(inputs[:, 0, 0:1]),
+                self.td.times[time_step_index + 1] * torch.ones_like(inputs[:, 0, 0:1], device=DEVICE),
                 information[:, 1:] + inputs[:, time_step_index],
             ),
             dim=1,
         )
 
-    # noinspection PyMethodMayBeStatic
-    def filter_information(self, information: torch.Tensor) -> torch.Tensor:
+    def _filter_information(self, information: torch.Tensor) -> torch.Tensor:
+        """
+        The identity, no filtering takes place.
+        """
         return information
 
     @staticmethod
-    def update_wealth(
+    def _update_wealth(
             wealth: torch.Tensor,
             inputs: torch.Tensor,
             strategy_for_time_step: torch.Tensor,
             time_step_index: int,
     ) -> torch.Tensor:
+        """
+        Updates the wealth process according to the strategy of the prevailing time step.
+
+        :param wealth: The previous wealth value, a tensor of shape (n,), with n being the batch size.
+        :type wealth: torch.Tensor
+        :param inputs: The increments of the asset price process. A tensor of shape (n, m, d,), where n is the batch
+        size, m the number of time steps, and d the dimension of the tradable asset.
+        :type inputs: torch.Tensor
+        :param strategy_for_time_step: The strategy that resulted for this time step. A tensor of shape (n, d,), where n
+        is the batch size and d the dimension of tradable assets.
+        :type strategy_for_time_step: torch.Tensor
+        :param time_step_index: The time step index of the current time period. Gives full information of time when used
+        on the `td` attribute.
+        :type time_step_index: int
+        :return: The updated wealth value a tensor of shape (n,), with n being the batch size. The value is computed by
+        adding the summed, and by strategy scaled, increments to the wealth of the previous period.
+        :rtype: torch.Tensor
+        """
         return wealth + torch.sum(strategy_for_time_step * inputs[:, time_step_index], dim=1)
 
-    def calculate_profit_and_loss(self, information: torch.Tensor, wealth: torch.Tensor) -> torch.Tensor:
+    def _calculate_profit_and_loss(self, information: torch.Tensor, wealth: torch.Tensor) -> torch.Tensor:
         derivative_payoff = self.config.derivative.payoff_for_terminal_asset_values(
-            self.terminal_asset_price_from_information(information),
+            self._terminal_asset_price_from_information(information),
         )
         return self.config.derivative.price + wealth - derivative_payoff
 
-    # noinspection PyMethodMayBeStatic
-    def terminal_asset_price_from_information(self, information: torch.Tensor) -> torch.Tensor:
+    def _terminal_asset_price_from_information(self, information: torch.Tensor) -> torch.Tensor:
         return information[:, 1:]
 
-    # noinspection PyMethodMayBeStatic
     def _prepare_pnl_for_training(self, profit_and_loss: torch.Tensor) -> torch.Tensor:
         return profit_and_loss

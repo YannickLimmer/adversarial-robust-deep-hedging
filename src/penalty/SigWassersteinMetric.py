@@ -1,7 +1,7 @@
 import functools
 import math
 from dataclasses import dataclass
-from typing import List
+from typing import List, Tuple
 
 import signatory
 import torch
@@ -16,7 +16,7 @@ class SignatureConfig(MetricConfig):
     depth: int
     basepoint: bool = False
     normalize: bool = True
-    augmentations: List[BaseAugmentation] = ()
+    augmentations: Tuple[BaseAugmentation, ...] = ()
 
 
 class SignatureEngine:

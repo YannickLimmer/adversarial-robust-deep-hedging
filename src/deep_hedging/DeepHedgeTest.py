@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
-from src.deep_hedging.DeepHedge import DeepHedgeConfig, DeepHedge
+from src.deep_hedging.DeepHedge import DeepHedge
+from src.deep_hedging.AbstractDeepHedge import DeepHedgeConfig
 from src.deep_hedging.StrategyNet import StrategyNetConfig
 from src.derivative.EuropeanCallOption import EuropeanCallOption
 from src.util.TimeUtil import UniformTimeDiscretization
@@ -18,7 +19,8 @@ def test_dh():
     derivative = EuropeanCallOption(strike=1.0, time_discretization=td, price=0.0)
     initial_asset_price = np.array([1.0])
     strategy_config = StrategyNetConfig(
-        dimension_of_asset=1,
+        dim_of_tradable_asset=1,
+        dim_of_information_process=1,
         number_of_layers=3,
         nodes_in_intermediate_layers=36,
     )
