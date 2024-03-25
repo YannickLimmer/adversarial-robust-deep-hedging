@@ -8,7 +8,7 @@ from src.deep_hedging.objectives.HedgeObjective import MeanVariance
 from src.derivative.EuropeanCallOption import EuropeanCallOption
 from src.generator.HestonCoefficient import HestonDiffusionCoefficient, HestonCoefficientConfig, HestonDriftCoefficient
 from src.generator.HestonGenerator import HestonGenerator
-from src.generator.SdeGenerator import GeneratorConfig
+from src.generator.EulerGenerator import EulerGeneratorConfig
 from src.util.TimeUtil import UniformTimeDiscretization
 from src.util.processes.BrownianMotionGenerator import BrownianMotionGenerator
 from src.util.processes.HestonGenerator import HestonParameterSet
@@ -32,7 +32,7 @@ def test_dh_heston():
 
     coef_config = HestonCoefficientConfig(heston_parameters, initial_asset_price=1.0)
     drift_coef, diffusion_coef = HestonDriftCoefficient(coef_config), HestonDiffusionCoefficient(coef_config)
-    gen_config = GeneratorConfig(td, drift_coef.get_initial_asset_price, drift_coef, diffusion_coef)
+    gen_config = EulerGeneratorConfig(td, drift_coef.get_initial_asset_price, drift_coef, diffusion_coef)
     generator = HestonGenerator(generator_config=gen_config)
     generator.drift.drift.requires_grad = False
 

@@ -5,7 +5,7 @@ import torch
 from numpy.typing import NDArray
 from torch.optim.lr_scheduler import StepLR
 
-from src.generator.SdeGenerator import SdeGenerator
+from src.generator.EulerGenerator import EulerGenerator
 from src.penalty.Metric import Metric
 from src.util.torch_util.AdapterUtil import AdapterList
 from src.util.torch_util.TrainingUtil import Trainer, Metrics, _Metrics, TrainerConfig, PbarOption
@@ -54,7 +54,7 @@ class SdeGeneratorTrainer(Trainer[SdeGeneratorMetrics]):
 
     def __init__(
             self,
-            gen: SdeGenerator,
+            gen: EulerGenerator,
             gen_config: SdeGeneratorTrainerConfig,
             trainer_config: TrainerConfig,
     ):

@@ -7,7 +7,7 @@ from numpy.typing import NDArray
 
 from src.deep_hedging.DeepHedge import DeepHedge
 from src.deep_hedging.DeepHedgeTrainer import DeepHedgeTrainerConfig
-from src.generator.SdeGenerator import SdeGenerator
+from src.generator.EulerGenerator import EulerGenerator
 from src.generator.SdeGeneratorTrainer import SdeGeneratorTrainerConfig
 from src.util.torch_util.TrainingUtil import Trainer, TrainerConfig, Metrics, PbarOption
 
@@ -41,7 +41,7 @@ class RobustDhGan(Trainer[RobustDhGanMetrics]):
             self,
             dh: DeepHedge,
             hedge_config: DeepHedgeTrainerConfig,
-            gen: SdeGenerator,
+            gen: EulerGenerator,
             gen_config: SdeGeneratorTrainerConfig,
             trainer_config: TrainerConfig,
     ):

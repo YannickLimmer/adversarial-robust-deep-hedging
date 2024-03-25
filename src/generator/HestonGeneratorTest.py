@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 from src.generator.HestonCoefficient import HestonDriftCoefficient, HestonDiffusionCoefficient, \
     HestonCoefficientConfig
 from src.util.processes.HestonGenerator import HestonParameterSet, HestonGenerator
-from src.generator.SdeGenerator import SdeGenerator, GeneratorConfig
+from src.generator.EulerGenerator import EulerGenerator, EulerGeneratorConfig
 from src.penalty.Augmentations import Scale, Cumsum, AddLags, LeadLag
 from src.penalty.SigWassersteinMetric import SignatureConfig, SigWassersteinMetric
 from src.util.TimeUtil import UniformTimeDiscretization
@@ -29,8 +29,8 @@ def heston_generator_with_sigwasserstein() -> None:
     drift_coefficient = HestonDriftCoefficient(coef_config)
     diffusion_coefficient = HestonDiffusionCoefficient(coef_config)
 
-    config = GeneratorConfig(td, drift_coefficient.get_initial_asset_price, drift_coefficient, diffusion_coefficient)
-    generator = SdeGenerator(generator_config=config)
+    config = EulerGeneratorConfig(td, drift_coefficient.get_initial_asset_price, drift_coefficient, diffusion_coefficient)
+    generator = EulerGenerator(generator_config=config)
     optimizer = torch.optim.Adam(generator.parameters())
 
     bm_increments = torch.as_tensor(

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
-from src.generator.SdeGenerator import GeneratorConfig, SdeGenerator
+from src.generator.EulerGenerator import EulerGeneratorConfig, EulerGenerator
 from src.generator.CoefficientNet import CoefficientNetConfig
 from src.penalty.Augmentations import Scale, Cumsum, AddLags, LeadLag
 from src.penalty.SigWassersteinMetric import SigWassersteinMetric, SignatureConfig
@@ -20,7 +20,7 @@ def test_simple_generation():
     drift_layer_specs = CoefficientNetConfig(initial_asset_price.shape[0], 3, 36)
     sigma_layer_specs = CoefficientNetConfig(initial_asset_price.shape[0], 3, 36, filter=torch.abs)
 
-    gen_specs = GeneratorConfig(
+    gen_specs = EulerGeneratorConfig(
         td=td,
         initial_asset_price=initial_asset_price,
         time_invariant=True,
@@ -28,7 +28,7 @@ def test_simple_generation():
         volatility_specs=sigma_layer_specs,
     )
 
-    generator = SdeGenerator(gen_specs)
+    generator = EulerGenerator(gen_specs)
     optimizer = torch.optim.Adam(generator.parameters())
 
     bm_increments = torch.as_tensor(
@@ -74,9 +74,9 @@ def run_sigwasserstein_generator() -> None:
     drift_layer_specs = CoefficientNetConfig(initial_asset_price.shape[0], 3, 36, filter=zero_drift)
     sigma_layer_specs = CoefficientNetConfig(initial_asset_price.shape[0], 3, 36, filter=torch.abs)
 
-    gen_specs = GeneratorConfig(td, initial_asset_price, drift_layer_specs, sigma_layer_specs)
+    gen_specs = EulerGeneratorConfig(td, initial_asset_price, drift_layer_specs, sigma_layer_specs)
 
-    generator = SdeGenerator(gen_specs)
+    generator = EulerGenerator(gen_specs)
     optimizer = torch.optim.Adam(generator.parameters())
 
     corr = 0.8

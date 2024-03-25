@@ -12,7 +12,7 @@ from src.deep_hedging.objectives.HedgeObjective import MeanVariance
 from src.derivative.EuropeanCallOption import EuropeanCallOption
 from src.gan.RobustDhGan import RobustDhGan
 from src.generator.HestonCoefficient import HestonCoefficientConfig, HestonDriftCoefficient, HestonDiffusionCoefficient
-from src.generator.SdeGenerator import GeneratorConfig, SdeGenerator
+from src.generator.EulerGenerator import EulerGeneratorConfig, EulerGenerator
 from src.generator.SdeGeneratorTrainer import SdeGeneratorTrainerConfig
 from src.penalty.Augmentations import Scale, AddLags, LeadLag
 from src.penalty.SigWassersteinMetric import SignatureConfig, SigWassersteinMetric
@@ -56,8 +56,8 @@ if __name__ == '__main__':
     # Initialize Market Generator
     coef_config = HestonCoefficientConfig(heston_parameters, initial_asset_price=1.0)
     drift_coef, diffusion_coef = HestonDriftCoefficient(coef_config), HestonDiffusionCoefficient(coef_config)
-    gen_config = GeneratorConfig(td, drift_coef.get_initial_asset_price, drift_coef, diffusion_coef)
-    generator = SdeGenerator(generator_config=gen_config)
+    gen_config = EulerGeneratorConfig(td, drift_coef.get_initial_asset_price, drift_coef, diffusion_coef)
+    generator = EulerGenerator(generator_config=gen_config)
     gen_optimizer = torch.optim.Adam(generator.parameters())
 
     # Initialize Deep Hedge

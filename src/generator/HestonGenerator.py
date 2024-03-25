@@ -2,10 +2,10 @@ import torch
 
 from src.config import DEVICE
 from src.generator.HestonCoefficient import HestonDriftCoefficient, HestonDiffusionCoefficient
-from src.generator.SdeGenerator import SdeGenerator
+from src.generator.EulerGenerator import EulerGenerator
 
 
-class HestonGenerator(SdeGenerator[HestonDriftCoefficient, HestonDiffusionCoefficient]):
+class HestonGenerator(EulerGenerator[HestonDriftCoefficient, HestonDiffusionCoefficient]):
 
     def forward(self, noise: torch.Tensor) -> torch.Tensor:
         process = super().forward(noise)
