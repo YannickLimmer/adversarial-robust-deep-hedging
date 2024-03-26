@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Optional
 
@@ -105,6 +106,24 @@ class DeepHedge:
 
         wealth_increments = (torch.diff(self.masks.tr(paths), 1, 1) * actions).sum(dim=2)
         return torch.cat((torch.zeros((batch_size, 1)), torch.cumsum(wealth_increments, dim=1)), dim=1)
+
+    def __deepcopy__(self, memo):
+        cls = self.__class__
+        result = cls.__new__(cls)
+        memo[id(self)] = result
+        for k, v in self.__dict__.items():
+            if k != "pde_optimizer":
+                setattr(result, k, deepcopy(v, memo))
+
+        result.pde_optimizer = self.optimizer.__class__(result.strategy.parameters())
+        self.sync_lrs(self.optimizer, result.optimizer)
+
+        return result
+
+    @staticmethod
+    def sync_lrs(opt_old, opt_new) -> None:
+        for g_in_old, g_in_new in zip(opt_old.param_groups, opt_new.param_groups):
+            g_in_new['lr'] = g_in_old['lr']
 
 
 if __name__ == '__main__':

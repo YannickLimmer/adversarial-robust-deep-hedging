@@ -122,3 +122,8 @@ class DeepHedgeTrainer:
 
     def save_state(self):
         save_trained_state(self.deep_hedge.strategy, self.ls_config.save_to_directory, 'deep_hedge')
+
+
+def train_trainers(ts, max_p):
+    tasks = (train_trainer.remote(i=i, t=t) for i, t in enumerate(tqdm(ts)))
+    return collect_trainings(tasks, max_p, len(ts))
