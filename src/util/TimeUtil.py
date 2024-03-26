@@ -35,8 +35,12 @@ class TimeDiscretization:
 
 class UniformTimeDiscretization(TimeDiscretization):
 
-    def __init__(self, time_step_size: float, number_of_time_steps):
+    def __init__(self, time_step_size: float, number_of_time_steps, start=0):
         self.time_step_size = time_step_size
         super(UniformTimeDiscretization, self).__init__(
-            np.linspace(0, time_step_size * number_of_time_steps, number_of_time_steps + 1, endpoint=True)
+            np.linspace(start, time_step_size * number_of_time_steps, number_of_time_steps + 1, endpoint=True)
         )
+
+    @classmethod
+    def from_bounds(cls, start, stop, number_of_time_steps):
+        return cls((stop-start) / number_of_time_steps, number_of_time_steps, start)
