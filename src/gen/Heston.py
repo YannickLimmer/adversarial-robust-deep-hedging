@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
 
 import numpy as np
 import torch
@@ -22,6 +22,10 @@ class HestonParameterSet:
     @property
     def initial_vol_set(self):
         return self.initial_vol is not None
+
+    @classmethod
+    def from_json(cls, json: Dict):
+        return cls(**json)
 
 
 class HestonGeneratorConfig(DiffusionGeneratorConfig):

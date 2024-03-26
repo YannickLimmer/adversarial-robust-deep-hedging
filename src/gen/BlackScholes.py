@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 
 import numpy as np
 import torch
@@ -24,6 +24,13 @@ class BlackScholesParameterSet:
             self.dim = self.sigma.shape[0]
         if isinstance(self.drift, float):
             self.drift = np.ones(self.dim) * self.drift
+
+    @classmethod
+    def from_json(cls, json: Dict):
+        kwargs = {}
+        for k, v in json.items():
+            kwargs[k] = v if not isinstance(v, list) else np.array(v)
+        return cls(**kwargs)
 
 
 class BlackScholesGeneratorConfig(DiffusionGeneratorConfig):

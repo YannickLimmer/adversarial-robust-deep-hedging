@@ -109,9 +109,10 @@ class DeepHedgeTrainer:
             loss = self.deep_hedge.step(batch_size).item()
             self.losses.append(loss)
 
+            loss_dict = {'hedge_loss': loss}
             if self.tqdm:
-                tqdm_batch_sizes.set_postfix(loss.mse_dict)
-            self.visualizer.visualize(i=i, loss_dict={'hedge_loss': loss})
+                tqdm_batch_sizes.set_postfix(loss_dict)
+            self.visualizer.visualize(i=i, loss_dict=loss_dict)
 
             if self.ls_config.save_every and i % (self.ls_config.save_every - 1) == 0:
                 self.save_state()

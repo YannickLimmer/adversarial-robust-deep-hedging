@@ -30,7 +30,7 @@ class Masks:
         return self._mask(paths, self.tradable)
 
     def po(self, paths: torch.Tensor) -> torch.Tensor:
-        return self._mask(paths, self.tradable)
+        return self._mask(paths, self.payoff)
 
     @staticmethod
     def _mask(paths: torch.Tensor, mask: Optional[NDArray]):
@@ -109,11 +109,11 @@ class DeepHedge:
 
 if __name__ == '__main__':
     pars = HestonParameterSet(3.0, 0.03, 0.2, -.8)
-    tdis = UniformTimeDiscretization.from_bounds(0, .25, 60)
+    tdis = UniformTimeDiscretization.from_bounds(0, .25, 18)
     conf = HestonGeneratorConfig(tdis, pars, True)
 
     gen = HestonGenerator(conf)
-    net = StrategyNet(StrategyNetConfig(2, 2, 2, 64, output_activation=nn.ReLU()))
+    net = StrategyNet(StrategyNetConfig(2, 2, 3, 64, output_activation=nn.ReLU()))
     eu_c = EuroCall(1.0)
     o = Std()
     m = Masks(np.array((True, True, False)), np.array((True, False, True)), np.array((True, False, False)))

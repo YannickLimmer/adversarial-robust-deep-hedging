@@ -1,0 +1,42 @@
+{
+  "Generator": {
+    "GeneratorConfigType": "Heston",
+    "GeneratorType": "Heston",
+    "ParameterSetType": "Heston",
+    "ParameterSet": {
+      "reversion_speed": 3.775191,
+      "reversion_level": 0.046208,
+      "vol_of_vol": 0.219244,
+      "correlation": -0.617779,
+      "drift": 0.0,
+      "initial_vol": null
+    },
+    "TimeDiscretizationKwargs": {
+      "start": 0.0,
+      "stop": 0.25,
+      "number_of_time_steps": 30
+    },
+    "GeneratorConfigKwargs": {
+      "include_vol_swap": true
+    }
+  },
+  "Hedge" : {
+    "StrategyKwargs": {
+      "dim_of_information_process": 2,
+      "dim_of_tradable_asset": 2,
+      "number_of_layers": 2,
+      "nodes_in_intermediate_layers": 64
+    },
+    "DerivativeType": "EuroCall",
+    "DerivativeKwargs": {
+      "strike": 1.0
+    },
+    "Objective": "Std",
+    "ObjectiveKwargs": {},
+    "Masks": {
+      "observable": [true, true, false],
+      "tradable": [true, false, true],
+      "payoff": [true, false, false]
+    }
+  }
+}

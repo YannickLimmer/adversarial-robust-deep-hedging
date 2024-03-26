@@ -1,0 +1,38 @@
+{
+  "Generator": {
+    "GeneratorConfigType": "BlackScholes",
+    "GeneratorType": "BlackScholes",
+    "ParameterSetType": "BlackScholes",
+    "ParameterSet": {
+      "sigma": [
+        [ 0.3      ,  0.0       ,  0.0        ],
+        [0.09      ,  0.28618176,  0.0        ],
+        [0.03      , -0.16667729,  0.24762609 ]
+      ],
+      "drift": 0.0
+    },
+    "TimeDiscretizationKwargs": {
+      "start": 0.0,
+      "stop": 0.117647,
+      "number_of_time_steps": 30
+    },
+    "GeneratorConfigKwargs": {
+    }
+  },
+  "Hedge" : {
+    "StrategyKwargs": {
+      "dim_of_information_process": 3,
+      "dim_of_tradable_asset": 3,
+      "number_of_layers": 2,
+      "nodes_in_intermediate_layers": 64
+    },
+    "DerivativeType": "EuroCall",
+    "DerivativeKwargs": {
+      "strike": 1.0
+    },
+    "Objective": "Std",
+    "ObjectiveKwargs": {},
+    "Masks": {
+    }
+  }
+}
