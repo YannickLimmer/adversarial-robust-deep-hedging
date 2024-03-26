@@ -3,12 +3,18 @@ from typing import Optional
 
 import numpy as np
 import torch
+from matplotlib import pyplot as plt
 from numpy._typing import NDArray
+from torch import nn
+from tqdm import trange
 
-from src.deep_hedging.StrategyNet import StrategyNet
-from src.deep_hedging.objectives.HedgeObjective import HedgeObjective
-from src.dis.Derivative import Derivative
+from src.config import DEVICE
+from src.deep_hedging.StrategyNet import StrategyNet, StrategyNetConfig
+from src.deep_hedging.objectives.HedgeObjective import HedgeObjective, Std
+from src.dis.Derivative import Derivative, EuroCall
 from src.gen.Generator import Generator
+from src.gen.Heston import HestonParameterSet, HestonGeneratorConfig, HestonGenerator
+from src.util.TimeUtil import UniformTimeDiscretization
 
 
 @dataclass
@@ -16,20 +22,27 @@ class Masks:
     observable: Optional[NDArray] = None
     tradable: Optional[NDArray] = None
     payoff: Optional[NDArray] = None
-    process_dim: Optional[int] = None
 
-    def __post_init__(self):
-        mask_list = [self.observable, self.tradable, self.payoff]
-        non_none_maks = [len(m) for m in mask_list if m is not None]
-        if self.process_dim is None:
-            self.process_dim = non_none_maks[0]
+    def ob(self, paths: torch.Tensor) -> torch.Tensor:
+        return self._mask(paths, self.observable)
 
-        if self.observable is None:
-            self.observable = np.ones(self.process_dim, dtype=bool)
-        if self.tradable is None:
-            self.tradable = np.ones(self.process_dim, dtype=bool)
-        if self.payoff is None:
-            self.payoff = np.ones(self.process_dim, dtype=bool)
+    def tr(self, paths: torch.Tensor) -> torch.Tensor:
+        return self._mask(paths, self.tradable)
+
+    def po(self, paths: torch.Tensor) -> torch.Tensor:
+        return self._mask(paths, self.tradable)
+
+    @staticmethod
+    def _mask(paths: torch.Tensor, mask: Optional[NDArray]):
+        if mask is None:
+            return paths
+
+        res = paths[:, :, mask]
+
+        if len(res.shape) != 3:  # If reduced to 1-dim
+            res = res[:, :, None]
+
+        return res
 
 
 class DeepHedge:
@@ -40,15 +53,19 @@ class DeepHedge:
             derivative: Derivative,
             generator: Generator,
             objective: HedgeObjective,
-            optimizer: Optional[torch.optim.optimizer] = None,
+            optimizer: Optional[torch.optim.Optimizer] = None,
             masks: Optional[Masks] = None,
     ):
         self.strategy = strategy
         self.derivative = derivative
         self.generator = generator
         self.objective = objective
-        self.optimizer = optimizer if not optimizer else torch.optim.Adam(self.strategy.parameters())
-        self.masks = masks if masks is not None else Masks(process_dim=generator.config.process_dim)
+        self.optimizer = optimizer if optimizer is not None else torch.optim.Adam(self.strategy.parameters())
+        self.masks = masks if masks is not None else Masks()
+
+        self.dtype = torch.float32
+        self.device = DEVICE
+        self.td = self.generator.config.td
 
     def step(
             self,
@@ -56,8 +73,7 @@ class DeepHedge:
             noise: Optional[torch.Tensor] = None,
             initial: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        paths = self.generator(batch_size, noise, initial)
-        loss = self.objective(self.compute_pnl(paths))
+        loss = self.objective(self.compute_pnl(batch_size, noise, initial))
 
         loss.backward()
         self.optimizer.step()
@@ -65,11 +81,48 @@ class DeepHedge:
 
         return loss
 
-    def compute_pnl(self, paths):
+    def compute_pnl(
+            self,
+            batch_size: int,
+            noise: Optional[torch.Tensor] = None,
+            initial: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        paths = self.generator(batch_size, noise, initial)
+        return self.compute_pnl_on_paths(paths)
+
+    def compute_pnl_on_paths(self, paths: torch.Tensor) -> torch.Tensor:
         terminal_wealth = self.compute_wealth(paths)[:, -1]
-        payoff = self.derivative.get_payoff_for_paths(paths[:, :, self.masks.payoff])
+        payoff = self.derivative.get_payoff_for_paths(self.masks.po(paths))
         return terminal_wealth - payoff
 
     def compute_wealth(self, paths: torch.Tensor) -> torch.Tensor:
-        observable_paths_with_time = torch.cat((paths[:, :, self.masks.observable]))
+        batch_size = paths.shape[0]
+        times = torch.tensor(self.td.times, dtype=self.dtype, device=self.device)[None, :, None]
+        observations = torch.cat((times.repeat(batch_size, 1, 1), self.masks.ob(paths)), dim=2)[:, :-1, :]
+        flat_observations = observations.reshape(batch_size * self.td.number_of_time_steps, -1)
 
+        actions = self.strategy(flat_observations).reshape(batch_size, self.td.number_of_time_steps, -1)
+
+        wealth_increments = (torch.diff(self.masks.tr(paths), 1, 1) * actions).sum(dim=2)
+        return torch.cat((torch.zeros((batch_size, 1)), torch.cumsum(wealth_increments, dim=1)), dim=1)
+
+
+if __name__ == '__main__':
+    pars = HestonParameterSet(3.0, 0.03, 0.2, -.8)
+    tdis = UniformTimeDiscretization.from_bounds(0, .25, 60)
+    conf = HestonGeneratorConfig(tdis, pars, True)
+
+    gen = HestonGenerator(conf)
+    net = StrategyNet(StrategyNetConfig(2, 2, 2, 64, output_activation=nn.ReLU()))
+    eu_c = EuroCall(1.0)
+    o = Std()
+    m = Masks(np.array((True, True, False)), np.array((True, False, True)), np.array((True, False, False)))
+
+    hedge = DeepHedge(net, eu_c, gen, o, masks=m)
+
+    for _ in trange(1000):
+        hedge.step(2 ** 8)
+
+    p = gen(2 ** 8)
+    plt.scatter(p[:, -1, 0].detach().numpy(), hedge.compute_wealth(p)[:, -1].detach().numpy())
+    plt.show()

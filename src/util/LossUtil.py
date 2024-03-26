@@ -7,7 +7,7 @@ def negative_standard_deviation(arr: torch.Tensor, dim: int = 0) -> torch.Tensor
     return - torch.std(arr, dim=dim, unbiased=True)
 
 
-def mean_variance(arr: torch.Tensor, scale: np.float = 1, dim: int = 0) -> torch.Tensor:
+def mean_variance(arr: torch.Tensor, scale: np.float64 = 1, dim: int = 0) -> torch.Tensor:
     return torch.mean(arr, dim=dim) - 0.5 * scale * torch.var(arr, dim=dim, unbiased=True)
 
 
@@ -34,7 +34,7 @@ def entropy(arr: torch.Tensor, scale: float = 1, dim: int = 0) -> torch.Tensor:
 
 def stable_entropy(
         arr: torch.Tensor,
-        scale: np.float = 0.2,
+        scale: np.float64 = 0.2,
         dim: int = 0,
 ) -> torch.Tensor:
     min_val = torch.min(arr, dim, keepdim=True)[0]
@@ -47,7 +47,7 @@ def negative_standard_error(arr: torch.Tensor, dim: int = 0):
 
 def conditional_value_at_risk(
         arr: torch.Tensor,
-        considered_fraction: np.float = 0.2,
+        considered_fraction: np.float64 = 0.2,
         dim: int = 0,
 ) -> torch.Tensor:
     """
@@ -68,7 +68,7 @@ def conditional_value_at_risk(
     return torch.mean(sorted_arr[considered_indices], dim=dim)
 
 
-def create_slice(shape: Tuple[int], axis: int, considered_fraction: np.float) -> Tuple:
+def create_slice(shape: Tuple[int], axis: int, considered_fraction: np.float64) -> Tuple:
     reduced_slice = np.s_[:int(considered_fraction * shape[axis]) + 1]
     return tuple((reduced_slice if ax == axis else np.s_[:]) for ax, _ in enumerate(shape))
 
